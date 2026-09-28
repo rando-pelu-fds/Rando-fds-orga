@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentiers — carnet de randos du groupe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1efe4; --ink:#1e2621; --pine:#2f4b3c; --pine-dark:#203327;
+    --clay:#a15c3e; --contour:#cabf9f; --card-bg:#fbfaf5; --line:#d8d2bd;
+    --ok:#3c6e4a; --err:#9a3a2a;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper);
+    background-image:
+      repeating-radial-gradient(circle at 15% 20%, transparent 0 26px, rgba(160,148,110,0.10) 27px 28px, transparent 29px 60px),
+      repeating-radial-gradient(circle at 85% 75%, transparent 0 40px, rgba(160,148,110,0.08) 41px 42px, transparent 43px 90px);
+    color:var(--ink); font-family:'Inter',system-ui,sans-serif; line-height:1.45;
+  }
+  h1,h2,h3,.brand{font-family:'Fraunces',serif;}
+  header.top{padding:16px 20px 12px;border-bottom:2px solid var(--pine);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header.top .brand{font-size:24px;font-weight:650;color:var(--pine-dark);}
+  header.top .tagline{font-size:13px;color:#5b6b60;margin-left:8px;}
+  .top-left{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px;}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#5b6b60;margin-left:10px;}
+  .status-pill .dot{width:8px;height:8px;border-radius:50%;background:#9aa39a;flex:none;}
+  .status-pill.ok .dot{background:var(--ok);} .status-pill.syncing .dot{background:var(--clay);animation:pulse 1s infinite;}
+  .status-pill.error .dot{background:var(--err);} .status-pill.local .dot{background:#9aa39a;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  button{font-family:inherit;cursor:pointer;border:1.5px solid var(--pine);background:var(--pine);color:#fff;padding:9px 14px;font-size:14px;font-weight:500;border-radius:3px;transition:background .15s,color .15s;}
+  button.ghost{background:transparent;color:var(--pine-dark);}
+  button.ghost:hover{background:var(--pine);color:#fff;}
+  button.subtle{border-color:var(--line);color:#5b6b60;background:transparent;font-size:13px;padding:6px 12px;}
+  button.subtle:hover{border-color:var(--clay);color:var(--clay);}
+  button.danger{border-color:#8f3b2a;background:transparent;color:#8f3b2a;}
+  button.danger:hover{background:#8f3b2a;color:#fff;}
+  button:hover{background:var(--pine-dark);}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .banner{margin:14px 20px 0;padding:12px 16px;border:1.5px dashed var(--clay);background:#fbf3ee;font-size:13.5px;color:var(--pine-dark);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+  main{padding:18px 20px 60px;max-width:780px;margin:0 auto;}
+  footer{padding:20px 20px 40px;font-size:12.5px;color:#8a9186;border-top:1px solid var(--line);max-width:780px;margin:0 auto;}
+
+  /* Onglets */
+  .tabs{display:flex;gap:0;border-bottom:2px solid var(--pine);margin-bottom:16px;flex-wrap:wrap;}
+  button.tab-btn{background:none;border:none;border-bottom:3px solid transparent;color:#5b6b60;padding:8px 4px;margin-right:20px;font-size:14.5px;font-weight:500;border-radius:0;}
+  button.tab-btn:hover{background:none;color:var(--pine-dark);}
+  button.tab-btn.active{color:var(--pine-dark);border-bottom-color:var(--clay);font-weight:650;}
+
+  .list-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:6px;flex-wrap:wrap;gap:8px;}
+  .list-header h2{margin:0;font-size:17px;font-weight:650;color:var(--pine-dark);}
+  .toggle-past{font-size:13px;color:#5b6b60;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+  .hike-card{padding:14px 6px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .hike-card:hover{background:var(--card-bg);}
+  .hike-card .titre{font-weight:600;font-size:15.5px;color:var(--pine-dark);}
+  .hike-card .meta{font-size:12.5px;color:#6a7267;margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;}
+  .hike-card .route{font-size:13px;margin-top:5px;color:var(--ink);}
+  .badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:2px;background:var(--contour);color:var(--pine-dark);margin-top:6px;}
+  .empty-note{padding:26px 6px;color:#6a7267;font-size:14px;}
+
+  /* Calendrier */
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .cal-header h2{margin:0;font-size:16px;color:var(--pine-dark);text-transform:capitalize;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-dow{font-size:11px;color:#8a9186;text-align:center;padding:4px 0;}
+  .cal-cell{min-height:68px;border:1px solid var(--line);background:var(--card-bg);padding:4px;font-size:11px;}
+  .cal-cell.empty{background:transparent;border:none;}
+  .cal-daynum{font-size:11px;color:#5b6b60;margin-bottom:3px;}
+  .cal-cell.today{border-color:var(--clay);}
+  .cal-cell.today .cal-daynum{color:var(--clay);font-weight:700;}
+  .cal-chip{background:var(--pine);color:#fff;border-radius:2px;padding:1px 4px;font-size:10.5px;margin-bottom:2px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cal-chip:hover{background:var(--pine-dark);}
+  @media (max-width:600px){ .cal-cell{min-height:50px;padding:2px;} .cal-chip{font-size:9px;padding:1px 2px;} }
+
+  /* Statistiques */
+  .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;}
+  .bar-row .label{width:80px;flex:none;color:#5b6b60;text-transform:capitalize;}
+  .bar-track{flex:1;background:var(--card-bg);border:1px solid var(--line);height:14px;}
+  .bar-fill{background:var(--pine);height:100%;}
+  .bar-row .count{width:22px;text-align:right;font-weight:600;color:var(--pine-dark);}
+
+  /* Modales / popups */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(30,38,33,.45);display:none;align-items:flex-start;justify-content:center;padding:36px 16px;overflow-y:auto;z-index:10000;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:var(--paper);border:2px solid var(--pine);max-width:520px;width:100%;padding:22px 24px 26px;}
+  .modal.wide{max-width:620px;}
+  .modal h3{margin:0 0 6px;color:var(--pine-dark);}
+  .modal p.lead{font-size:13px;color:#5b6b60;margin:0 0 16px;}
+  .modal-close-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .modal-close-row button{border:none;background:none;color:#5b6b60;font-size:20px;line-height:1;padding:0 2px;}
+
+  .field{margin-bottom:12px;min-width:0;}
+  .field label{display:block;font-size:12.5px;color:#5b6b60;margin-bottom:4px;font-weight:500;}
+  .field input,.field textarea,.field select{width:100%;max-width:100%;min-width:0;height:38px;}
+  .field textarea{height:auto;}
+  select{font-family:inherit;font-size:14px;padding:8px 10px;border:1.5px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);}
+  input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;line-height:normal;}
+  .grid2>*{min-width:0;}
+  input,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1.5px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);}
+  input:focus,textarea:focus{outline:none;border-color:var(--pine);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:600px){ .grid2{grid-template-columns:1fr;} header.top{flex-direction:column;align-items:flex-start;} .modal-backdrop{padding:14px 8px;} .modal{padding:18px 16px 22px;} }
+
+  .modal-actions{display:flex;justify-content:space-between;margin-top:18px;align-items:center;flex-wrap:wrap;gap:8px;}
+  .hint{font-size:12px;color:#8a9186;margin-top:4px;}
+  .warn-box{border:1.5px solid var(--err);background:#fbeeeb;color:#7a2c1e;font-size:12.5px;padding:10px 12px;margin:10px 0;}
+  .warn-box b{display:block;margin-bottom:2px;}
+  .checkline{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#5b6b60;margin:6px 0 14px;}
+  .checkline input{margin-top:3px;width:auto;height:auto;}
+  .link-output{width:100%;font-family:monospace;font-size:12.5px;margin-top:8px;height:auto;}
+  hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0;}
+
+  /* Détail */
+  .detail-head h2{margin:0 0 4px;font-size:22px;color:var(--pine-dark);}
+  .detail-head .route-line{font-size:14.5px;color:var(--ink);margin-bottom:8px;}
+  .stat-row{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0 16px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .stat{font-size:12.5px;color:#5b6b60;}
+  .stat b{display:block;font-size:16px;color:var(--pine-dark);font-family:'Fraunces',serif;font-weight:650;}
+  .section-title{font-size:14px;font-weight:650;color:var(--pine-dark);margin:18px 0 8px;}
+  table.ptable{width:100%;border-collapse:collapse;margin-bottom:10px;}
+  table.ptable th{text-align:left;font-size:11.5px;color:#5b6b60;font-weight:600;border-bottom:1px solid var(--line);padding:6px 4px;}
+  table.ptable td{padding:7px 4px;border-bottom:1px solid var(--line);font-size:14px;}
+  table.ptable td.actions{text-align:right;}
+  table.ptable td.actions button{border:none;background:none;color:var(--clay);font-size:12.5px;padding:0;}
+  .signup-row{display:flex;gap:8px;margin-bottom:4px;}
+  .signup-row input{flex:1;height:38px;}
+  .comment{border-top:1px dashed var(--line);padding:10px 0;}
+  .comment .who{font-size:13px;font-weight:600;color:var(--pine-dark);}
+  .comment .when{font-size:11px;color:#8a9186;margin-left:6px;}
+  .comment .txt{font-size:14px;margin-top:3px;}
+  .comment-form{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .comment-form input:first-child{width:120px;height:38px;}
+  .comment-form input:nth-child(2){flex:1;min-width:140px;height:38px;}
+  .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .cancel-reason{color:#8f3b2a;font-size:13px;font-style:italic;margin-top:3px;}
+  .checkline.tight{margin:4px 0;}
+  .meet-title{font-size:12.5px;color:#5b6b60;font-weight:500;margin:4px 0 2px;}
+  .status-badge{display:inline-block;background:#8f3b2a;color:#fff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:2px 7px;border-radius:2px;margin-left:8px;vertical-align:middle;}
+  .hike-card.cancelled{opacity:.75;}
+  .hike-card.cancelled .titre{text-decoration:line-through;color:#8a9186;}
+  .cal-chip.cancelled{background:#9aa39a;text-decoration:line-through;}
+  .desc{white-space:pre-wrap;margin:12px 0 0;font-size:14px;color:var(--ink);background:var(--card-bg);border-left:3px solid var(--contour);padding:10px 12px;overflow-wrap:anywhere;}
+  .field textarea{resize:vertical;}
+  button.collapse-btn{border:none;background:none;color:var(--pine-dark);font-weight:650;font-size:14px;padding:0;margin:18px 0 8px;display:flex;gap:6px;align-items:center;}
+  button.collapse-btn:hover{background:none;color:var(--clay);}
+  .info-grid{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0;margin:10px 0 0;}
+  .info-grid dt{color:#5b6b60;font-size:12.5px;}
+  .info-grid dd{margin:0;color:var(--ink);font-weight:500;overflow-wrap:anywhere;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-left">
+    <span class="brand">Sentiers</span><span class="tagline">carnet de randos du groupe</span>
+    <span class="status-pill local" id="statusPill"><span class="dot"></span><span id="statusText">Non configuré</span></span>
+  </div>
+  <div class="top-actions">
+    <button class="subtle" id="btnSettings">⚙ Paramètres</button>
+    <button id="btnAdd">+ Proposer une rando</button>
+  </div>
+</header>
+
+<div class="banner" id="configBanner" style="display:none;">
+  <span>Aucun dépôt GitHub configuré — les données restent uniquement dans ce navigateur.</span>
+  <button class="ghost" id="btnBannerSettings">Configurer le dépôt GitHub</button>
+</div>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="list" type="button">Liste</button>
+    <button class="tab-btn" data-tab="calendar" type="button">Calendrier</button>
+    <button class="tab-btn" data-tab="stats" type="button">Statistiques</button>
+  </div>
+
+  <section id="viewList">
+    <div class="list-header">
+      <h2 id="listTitle">À venir</h2>
+      <label class="toggle-past"><input type="checkbox" id="chkPast" style="width:auto;height:auto;"> Voir les randos passées</label>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <section id="viewCalendar" style="display:none;">
+    <div class="cal-header">
+      <button class="subtle" id="calPrev" type="button">‹ Précédent</button>
+      <h2 id="calLabel"></h2>
+      <button class="subtle" id="calNext" type="button">Suivant ›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </section>
+
+  <section id="viewStats" style="display:none;">
+    <div class="stat-row" id="statsSummary"></div>
+    <div class="section-title">Randos par mois</div>
+    <div id="statsMonthly"></div>
+    <div class="grid2" style="margin-top:18px;">
+      <div><div class="section-title">Organisateurs les plus actifs</div><div id="statsOrga"></div></div>
+      <div><div class="section-title">Participants les plus assidus</div><div id="statsPart"></div></div>
+    </div>
+  </section>
+</main>
+
+<footer>Les randos sont lues et publiées depuis un dépôt GitHub (fichier JSON) si configuré ; sinon elles restent stockées localement dans ce navigateur. <span style="opacity:.6;">· v2026.09.28-c</span></footer>
+
+<!-- Popup détail d'une rando -->
+<div class="modal-backdrop" id="detailBackdrop">
+  <div class="modal wide">
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- Popup rejoindre via lien d'inscription -->
+<div class="modal-backdrop" id="joinModalBackdrop">
+  <div class="modal">
+    <div class="hint" style="margin:0 0 4px;">Inscription à la randonnée</div>
+    <h2 id="joinHikeTitle" style="margin:0 0 4px;font-size:26px;line-height:1.2;color:var(--pine-dark);"></h2>
+    <div id="joinHikeInfo"></div>
+    <div id="joinHikeDesc"></div>
+    <button class="collapse-btn" id="joinPartToggle" type="button"><span id="joinPartChev">▸</span> <span id="joinPartLabel">Participants</span></button>
+    <div id="joinPartBody" style="display:none;"></div>
+    <div id="joinCancelledNote" class="warn-box" style="display:none;"><b>Rando annulée</b>Les inscriptions sont fermées pour cette rando.</div>
+    <div id="joinFormBody">
+      <div class="grid2" style="margin-top:14px;">
+        <div class="field"><label>Prénom</label><input id="joinName" placeholder="Prénom" autocomplete="given-name"></div>
+        <div class="field"><label>NOM</label><input id="joinLast" placeholder="NOM" autocomplete="family-name" style="text-transform:uppercase;"></div>
+      </div>
+      <div id="joinMeetRow">
+        <div class="meet-title">Lieu de rencontre</div>
+        <label class="checkline tight"><input type="checkbox" id="joinMeetRdv" checked> <span id="joinMeetRdvText"></span></label>
+        <label class="checkline tight"><input type="checkbox" id="joinMeetDepart"> <span id="joinMeetDepartText"></span></label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" id="btnJoinCancel" type="button">Annuler</button>
+      <button id="btnJoinConfirm" type="button">Confirmer mon inscription</button>
+    </div>
+  </div>
+</div>
+
+<!-- Popup paramètres GitHub -->
+<div class="modal-backdrop" id="settingsBackdrop">
+  <div class="modal">
+    <div class="modal-close-row">
+      <h3>Paramètres GitHub</h3>
+      <button data-action="close-settings" title="Fermer" type="button">✕</button>
+    </div>
+    <p class="lead">Le fichier JSON doit se trouver dans un dépôt <b>public</b> pour que tout le monde puisse le lire sans jeton (cas classique d'un site GitHub Pages).</p>
+    <div class="grid2">
+      <div class="field"><label>Propriétaire / organisation</label><input id="s_owner" placeholder="ex. jdupont"></div>
+      <div class="field"><label>Dépôt</label><input id="s_repo" placeholder="ex. randos-groupe"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Branche</label><input id="s_branch" placeholder="main"></div>
+      <div class="field"><label>Chemin du fichier JSON</label><input id="s_path" placeholder="randos.json"></div>
+    </div>
+    <div class="field">
+      <label>Jeton d'accès personnel GitHub (facultatif, pour publier les modifications)</label>
+      <input type="password" id="s_token" placeholder="github_pat_… (laisser vide en lecture seule)">
+      <div class="hint">Jeton « fine-grained » limité à ce dépôt, permission <i>Contents: Read and write</i>. Stocké uniquement dans ce navigateur.</div>
+    </div>
+    <div class="warn-box"><b>Ne partagez jamais votre jeton dans un message public ou un lien.</b>Transmettez-le en direct aux personnes de confiance qui doivent publier des randos.</div>
+    <div class="modal-actions">
+      <button class="ghost" id="btnSettingsCancel" type="button">Annuler</button>
+      <button id="btnSettingsSave" type="button">Enregistrer les paramètres</button>
+    </div>
+
+    <hr class="sep">
+    <h3 style="font-size:16px;">Lien à partager au groupe</h3>
+    <p class="lead">Lien pré-configuré avec le dépôt/branche/fichier, pour que les participants ouvrent l'appli déjà connectée aux bonnes données.</p>
+    <label class="checkline"><input type="checkbox" id="s_includeToken"> Inclure aussi mon jeton dans ce lien (fortement déconseillé — accès en écriture à quiconque ouvre le lien)</label>
+    <button class="subtle" id="btnGenLink" type="button">Générer et copier le lien</button>
+    <input class="link-output" id="s_link" readonly onclick="this.select()">
+
+    <hr class="sep">
+    <h3 style="font-size:16px;">Données</h3>
+    <div class="action-row">
+      <button class="subtle" id="btnRefresh" type="button">⟳ Actualiser depuis GitHub</button>
+      <button class="subtle" id="btnExport" type="button">Exporter en JSON</button>
+      <button class="subtle" id="btnImport" type="button">Importer un JSON</button>
+      <input type="file" id="fileImport" accept="application/json" style="display:none">
+    </div>
+  </div>
+</div>
+
+<!-- Popup ajout / modification -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h3 id="modalTitle">Proposer une randonnée</h3>
+    <div class="field"><label>Titre</label><input id="f_titre" placeholder="Ex. Boucle des Trois Cols"></div>
+    <div class="grid2">
+      <div class="field"><label>Date</label><input type="date" id="f_date"></div>
+      <div class="field"><label>Heure de départ</label><input type="time" id="f_hdep"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Organisateur·rice</label><input id="f_orga"></div>
+      <div class="field"><label>Difficulté</label>
+        <select id="f_diff"><option value="">—</option><option>Facile</option><option>Moyenne</option><option>Difficile</option><option>Très difficile</option></select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Distance (km)</label><input type="number" step="0.1" id="f_km"></div>
+      <div class="field"><label>Dénivelé (m D+)</label><input type="number" id="f_deniv"></div>
+    </div>
+    <div class="field"><label>Durée prévue</label><input id="f_duree" placeholder="ex. 4h30"></div>
+    <div class="field"><label>Lieu de rendez-vous</label><input id="f_rdv" placeholder="Ex. Parking de la gare, 8h15"></div>
+    <div class="field"><label>Lieu de départ</label><input id="f_adresse" placeholder="Ex. Parking du Col des Aravis, Manigod"></div>
+    <label class="checkline" style="margin:0 0 12px;"><input type="checkbox" id="f_boucle" checked> Rando en boucle (l'arrivée est le point de départ)</label>
+    <div class="field" id="f_arrivee_field" style="display:none;"><label>Lieu d'arrivée</label><input id="f_arrivee" placeholder="Ex. Refuge du Lac"></div>
+    <div class="field"><label>Description (facultatif)</label><textarea id="f_desc" rows="3" placeholder="Infos utiles : équipement, pique-nique, covoiturage…"></textarea></div>
+    <div class="field" id="f_raison_field" style="display:none;"><label>Raison de l'annulation</label><input id="f_raison" placeholder="Ex. Météo défavorable"></div>
+    <div class="modal-actions">
+      <button class="ghost" id="btnCancel" type="button">Annuler</button>
+      <button id="btnSave" type="button">Enregistrer la rando</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONFIG_KEY = 'sentiers_gh_config_v1';
+const TOKEN_KEY = 'sentiers_gh_token_v1';
+const LOCAL_CACHE_KEY = 'sentiers_data_cache_v1';
+const DEFAULT_HEURE_DEPART = '09:00';
+const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const DOW = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+let state = { hikes: [] };
+let selectedId = null;
+let editingId = null;
+let showPast = false;
+let pendingJoin = null;
+let activeTab = 'list';
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+// ---------- Config ----------
+function getConfig(){
+  const cfg = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+  cfg.branch = cfg.branch || 'main';
+  cfg.path = cfg.path || 'randos.json';
+  cfg.token = localStorage.getItem(TOKEN_KEY) || '';
+  return cfg;
+}
+function saveConfig({owner, repo, branch, path, token}){
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({owner: owner||'', repo: repo||'', branch: branch||'main', path: path||'randos.json'}));
+  if(token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+function hasRepo(cfg){ return !!(cfg.owner && cfg.repo); }
+
+function applyUrlConfig(){
+  const params = new URLSearchParams(location.search);
+  let touched = false;
+  if(params.has('owner') || params.has('repo')){
+    saveConfig({
+      owner: params.get('owner') || '', repo: params.get('repo') || '',
+      branch: params.get('branch') || 'main', path: params.get('path') || 'randos.json',
+      token: params.get('token') || undefined
+    });
+    touched = true;
+  }
+  if(params.has('join')){ pendingJoin = params.get('join'); touched = true; }
+  if(touched) history.replaceState(null, '', location.pathname);
+}
+function updateConfigBanner(){
+  document.getElementById('configBanner').style.display = hasRepo(getConfig()) ? 'none' : 'flex';
+}
+function setStatus(kind, text){
+  document.getElementById('statusPill').className = 'status-pill ' + kind;
+  document.getElementById('statusText').textContent = text;
+}
+
+// ---------- GitHub read/write ----------
+function b64EncodeUnicode(str){ return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (m,p1)=>String.fromCharCode('0x'+p1))); }
+function b64DecodeUnicode(str){ return decodeURIComponent(atob(str.replace(/\n/g,'')).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')); }
+async function ghGetFile(cfg){
+  const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(cfg.path)}?ref=${encodeURIComponent(cfg.branch)}&_=${Date.now()}`, {
+    headers: Object.assign({'Accept':'application/vnd.github+json'}, cfg.token ? {Authorization: 'Bearer ' + cfg.token} : {})
+  });
+  if(res.status === 404) return {data: {hikes: []}, sha: null};
+  if(!res.ok) throw new Error('lecture GitHub ' + res.status);
+  const json = await res.json();
+  const content = b64DecodeUnicode(json.content || '');
+  return {data: content ? JSON.parse(content) : {hikes: []}, sha: json.sha};
+}
+async function ghPutFile(cfg, dataObj, sha, message){
+  const body = {message: message || 'Mise à jour randos.json', content: b64EncodeUnicode(JSON.stringify(dataObj, null, 2)), branch: cfg.branch};
+  if(sha) body.sha = sha;
+  const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(cfg.path)}`, {
+    method: 'PUT',
+    headers: {Authorization: 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error(res.status + (err.message ? ' — ' + err.message : ' — échec de la publication'));
+  }
+  return res.json();
+}
+
+async function initialLoad(){
+  const cfg = getConfig();
+  updateConfigBanner();
+  if(!hasRepo(cfg)){
+    const cached = localStorage.getItem(LOCAL_CACHE_KEY);
+    state = cached ? JSON.parse(cached) : {hikes: []};
+    setStatus('local', 'Non configuré — données locales uniquement');
+    renderAll();
+    return;
+  }
+  setStatus('syncing', 'Chargement depuis ' + cfg.owner + '/' + cfg.repo + '…');
+  try{
+    const {data} = await ghGetFile(cfg);
+    state = data || {hikes: []};
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(state));
+    setStatus('ok', 'Synchronisé avec ' + cfg.owner + '/' + cfg.repo + (cfg.token ? '' : ' (lecture seule)'));
+  }catch(e){
+    const cached = localStorage.getItem(LOCAL_CACHE_KEY);
+    state = cached ? JSON.parse(cached) : {hikes: []};
+    setStatus('error', "Impossible de joindre GitHub — dernière copie locale affichée");
+  }
+  renderAll();
+}
+
+let lastWriteAt = 0;
+async function syncMutate(mutatorFn, message){
+  lastWriteAt = Date.now();
+  const cfg = getConfig();
+  if(!hasRepo(cfg)){
+    state = mutatorFn(JSON.parse(JSON.stringify(state)));
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(state));
+    setStatus('local', 'Enregistré localement — configurez GitHub pour partager au groupe');
+    renderAll();
+    return;
+  }
+  if(!cfg.token){
+    state = mutatorFn(JSON.parse(JSON.stringify(state)));
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(state));
+    setStatus('local', 'Enregistré localement seulement — aucun jeton configuré pour publier sur GitHub');
+    renderAll();
+    return;
+  }
+  setStatus('syncing', 'Publication sur GitHub…');
+  try{
+    const {data: remote, sha} = await ghGetFile(cfg);
+    const updated = mutatorFn(remote || {hikes: []});
+    await ghPutFile(cfg, updated, sha, message);
+    state = updated;
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(state));
+    setStatus('ok', 'Publié sur ' + cfg.owner + '/' + cfg.repo);
+  }catch(e){
+    state = mutatorFn(JSON.parse(JSON.stringify(state)));
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(state));
+    setStatus('error', 'Échec de publication (' + e.message + ') — gardé localement seulement');
+  }
+  renderAll();
+}
+
+function renderAll(){
+  renderList(); renderDetail();
+  if(activeTab === 'calendar') renderCalendar();
+  if(activeTab === 'stats') renderStats();
+}
+
+// ---------- Utils ----------
+function uid(){ return 'h_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function endDateTime(h){ return new Date(h.date + 'T23:59'); }
+function isPast(h){ return endDateTime(h).getTime() < Date.now(); }
+function fmtDate(d){ const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short', year:'numeric'}); }
+function isBoucle(h){ return h.boucle !== undefined ? !!h.boucle : !h.arrivee; }
+function syncBoucleUI(){
+  document.getElementById('f_arrivee_field').style.display = document.getElementById('f_boucle').checked ? 'none' : 'block';
+}
+function hikeInfoHtml(h){
+  const rows = [
+    ['Date', h.date ? fmtDate(h.date) : ''],
+    ['Heure de départ', h.heureDepart],
+    ['Rendez-vous', h.rdv],
+    ['Lieu de départ', h.departLabel],
+    isBoucle(h) ? ['Parcours', 'Boucle'] : ["Lieu d'arrivée", h.arrivee],
+    ['Organisateur·rice', h.orga],
+    ['Distance', h.km != null ? h.km + ' km' : ''],
+    ['Dénivelé', h.deniv != null ? h.deniv + ' m D+' : ''],
+    ['Durée prévue', h.duree],
+    ['Difficulté', h.difficulte]
+  ].filter(r => r[1]);
+  return '<dl class="info-grid">' + rows.map(r => '<dt>' + r[0] + '</dt><dd>' + escapeHtml(String(r[1])) + '</dd>').join('') + '</dl>';
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- Onglets ----------
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('viewList').style.display = tab === 'list' ? '' : 'none';
+  document.getElementById('viewCalendar').style.display = tab === 'calendar' ? '' : 'none';
+  document.getElementById('viewStats').style.display = tab === 'stats' ? '' : 'none';
+  if(tab === 'calendar') renderCalendar();
+  if(tab === 'stats') renderStats();
+}
+document.querySelectorAll('.tab-btn').forEach(b=> b.onclick = ()=> switchTab(b.dataset.tab));
+
+// ---------- Liste ----------
+function renderList(){
+  const list = document.getElementById('list');
+  document.getElementById('listTitle').textContent = showPast ? 'Randos passées' : 'À venir';
+  let hikes = (state.hikes||[]).filter(h => showPast ? isPast(h) : !isPast(h));
+  hikes.sort((a,b)=>{
+    const da = a.date + 'T' + (a.heureDepart||'00:00'), db = b.date + 'T' + (b.heureDepart||'00:00');
+    return showPast ? db.localeCompare(da) : da.localeCompare(db);
+  });
+  if(hikes.length === 0){
+    list.innerHTML = `<div class="empty-note">${showPast ? "Aucune rando passée pour l'instant." : "Aucune rando à venir. Proposez-en une !"}</div>`;
+    return;
+  }
+  list.innerHTML = hikes.map(h => `
+    <div class="hike-card${h.statut==='annulee' ? ' cancelled' : ''}" data-id="${h.id}">
+      <div class="titre">${escapeHtml(h.titre)}${h.statut==='annulee' ? '<span class="status-badge">Annulée</span>' : ''}</div>
+      ${h.statut==='annulee' && h.raisonAnnulation ? '<div class="cancel-reason">Annulée : ' + escapeHtml(h.raisonAnnulation) + '</div>' : ''}
+      <div class="meta"><span>${fmtDate(h.date)}</span><span>${h.heureDepart||'?'}</span></div>
+      <div class="route">${escapeHtml(h.departLabel||'?')}${isBoucle(h) ? ' · boucle' : ' → ' + escapeHtml(h.arrivee||'?')}</div>
+      <div class="badge">${h.km ?? '?'} km · ${h.deniv ?? '?'} m D+${h.difficulte ? ' · ' + escapeHtml(h.difficulte) : ''}</div>
+    </div>`).join('');
+  list.querySelectorAll('.hike-card').forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
+  });
+}
+
+// ---------- Calendrier ----------
+function renderCalendar(){
+  document.getElementById('calLabel').textContent = MOIS[calMonth] + ' ' + calYear;
+  const grid = document.getElementById('calGrid');
+  const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+  const numDays = new Date(calYear, calMonth+1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+  let html = DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html += '<div class="cal-cell empty"></div>';
+  for(let day=1; day<=numDays; day++){
+    const dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    const dayHikes = (state.hikes||[]).filter(h=>h.date===dateStr);
+    html += `<div class="cal-cell ${dateStr===todayStr?'today':''}">
+      <div class="cal-daynum">${day}</div>
+      ${dayHikes.map(h=>`<div class="cal-chip${h.statut==='annulee' ? ' cancelled' : ''}" data-id="${h.id}" title="${escapeHtml(h.titre)}">${escapeHtml(h.titre)}</div>`).join('')}
+    </div>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.cal-chip').forEach(chip=> chip.onclick = ()=> openDetail(chip.dataset.id));
+}
+document.getElementById('calPrev').onclick = ()=>{ calMonth--; if(calMonth<0){ calMonth=11; calYear--; } renderCalendar(); };
+document.getElementById('calNext').onclick = ()=>{ calMonth++; if(calMonth>11){ calMonth=0; calYear++; } renderCalendar(); };
+
+// ---------- Statistiques ----------
+function renderRankTable(counts, emptyMsg){
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  if(entries.length===0) return `<p style="color:#8a9186;font-size:13px;">${emptyMsg}</p>`;
+  return `<table class="ptable"><tbody>${entries.map(([name,count])=>`<tr><td>${escapeHtml(name)}</td><td class="actions">${count}</td></tr>`).join('')}</tbody></table>`;
+}
+function renderStats(){
+  const allHikes = state.hikes || [];
+  const hikes = allHikes.filter(h => h.statut !== 'annulee');
+  const cancelledCount = allHikes.length - hikes.length;
+  const totalKm = hikes.reduce((sum,h)=> sum + (h.km||0), 0);
+  const totalDeniv = hikes.reduce((sum,h)=> sum + (h.deniv||0), 0);
+  const upcoming = hikes.filter(h=>!isPast(h)).length;
+  const past = hikes.filter(h=>isPast(h)).length;
+  document.getElementById('statsSummary').innerHTML = `
+    <div class="stat"><b>${hikes.length}</b>randos au total</div>
+    <div class="stat"><b>${upcoming}</b>à venir</div>
+    <div class="stat"><b>${past}</b>passées</div>
+    ${cancelledCount ? '<div class="stat"><b>' + cancelledCount + '</b>annulées</div>' : ''}
+    <div class="stat"><b>${totalKm.toFixed(0)} km</b>distance cumulée</div>
+    <div class="stat"><b>${totalDeniv} m</b>dénivelé cumulé</div>
+  `;
+  const byMonth = {};
+  hikes.forEach(h=>{ if(h.date){ const key = h.date.slice(0,7); byMonth[key] = (byMonth[key]||0) + 1; } });
+  const monthKeys = Object.keys(byMonth).sort();
+  const maxCount = Math.max(1, ...monthKeys.map(k=>byMonth[k]));
+  document.getElementById('statsMonthly').innerHTML = monthKeys.length===0
+    ? '<p style="color:#8a9186;font-size:13px;">Pas encore de données.</p>'
+    : monthKeys.map(k=>{
+        const [y,m] = k.split('-');
+        const label = MOIS[parseInt(m,10)-1].slice(0,4) + '. ' + y;
+        const pct = Math.round(byMonth[k]/maxCount*100);
+        return `<div class="bar-row"><span class="label">${label}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><span class="count">${byMonth[k]}</span></div>`;
+      }).join('');
+  const orgaCounts = {};
+  hikes.forEach(h=>{ if(h.orga) orgaCounts[h.orga] = (orgaCounts[h.orga]||0)+1; });
+  document.getElementById('statsOrga').innerHTML = renderRankTable(orgaCounts, 'Aucune donnée.');
+  const partCounts = {};
+  hikes.forEach(h=> (h.participants||[]).forEach(p=>{ const l = pLabel(p); partCounts[l] = (partCounts[l]||0)+1; }));
+  document.getElementById('statsPart').innerHTML = renderRankTable(partCounts, 'Aucune inscription pour le moment.');
+}
+
+// ---------- Détail (popup) ----------
+let participantsOpen = false;
+function normP(p){ return typeof p === 'string' ? {prenom: p, nom: '', lieu: ''} : p; }
+function pLabel(p){ p = normP(p); return p.prenom + (p.nom ? ' ' + p.nom : ''); }
+function pKey(p){ p = normP(p); return (p.prenom + '|' + (p.nom || '')).toLowerCase(); }
+function meetLabel(l){ return l === 'depart' ? 'Départ' : (l === 'rdv' ? 'RdV' : '—'); }
+function addParticipant(s, hikeId, person){
+  const hh = (s.hikes || []).find(x => x.id === hikeId);
+  if(hh){
+    hh.participants = (hh.participants || []).filter(x => pKey(x) !== pKey(person));
+    hh.participants.push(person);
+  }
+  return s;
+}
+function bindExclusive(idA, idB){
+  const a = document.getElementById(idA), b = document.getElementById(idB);
+  if(!a || !b) return;
+  a.onchange = ()=>{ if(a.checked) b.checked = false; else a.checked = true; };
+  b.onchange = ()=>{ if(b.checked) a.checked = false; else b.checked = true; };
+}
+function hikeDescHtml(h){ return h.description ? '<div class="desc">' + escapeHtml(h.description) + '</div>' : ''; }
+
+function openDetail(id, expand){
+  if(selectedId !== id) participantsOpen = false;
+  if(expand) participantsOpen = true;
+  selectedId = id;
+  renderDetail();
+}
+function closeDetail(){ selectedId = null; document.getElementById('detailBackdrop').classList.remove('open'); }
+
+function renderDetail(){
+  const bd = document.getElementById('detailBackdrop');
+  if(!selectedId){ bd.classList.remove('open'); return; }
+  const h = (state.hikes||[]).find(x=>x.id===selectedId);
+  if(!h){ selectedId = null; bd.classList.remove('open'); return; }
+
+  const cancelled = h.statut === 'annulee';
+  const hasRdv = !!(h.rdv && h.rdv.trim());
+  const parts = (h.participants || []).map(normP);
+  const cancelBanner = cancelled
+    ? '<div class="warn-box"><b>Rando annulée</b>' + (h.raisonAnnulation ? escapeHtml(h.raisonAnnulation) : 'Les inscriptions sont fermées.') + '</div>'
+    : '';
+  const tableHtml = parts.length === 0
+    ? '<p style="color:#8a9186;font-size:13px;">Personne inscrit pour le moment.</p>'
+    : `<table class="ptable"><thead><tr><th>Participant·e</th><th>Rencontre</th><th></th></tr></thead><tbody>
+        ${parts.map(p=>`<tr><td>${escapeHtml(pLabel(p))}</td><td>${meetLabel(p.lieu)}</td><td class="actions"><button data-key="${escapeHtml(pKey(p))}" data-action="unsignup">Désinscrire</button></td></tr>`).join('')}
+       </tbody></table>`;
+
+  const comments = h.comments || [];
+  const commentsHtml = comments.length === 0
+    ? '<div style="color:#8a9186;font-size:13px;padding:8px 0;">Aucun message pour le moment.</div>'
+    : comments.map(c=>`<div class="comment"><span class="who">${escapeHtml(c.author)}</span><span class="when">${new Date(c.at).toLocaleString('fr-FR')}</span><div class="txt">${escapeHtml(c.text)}</div></div>`).join('');
+
+  const signupHtml = cancelled
+    ? '<p class="hint" style="margin:14px 0 0;">Les inscriptions sont fermées pour cette rando.</p>'
+    : `<div class="section-title">S'inscrire</div>
+      <div class="grid2">
+        <div class="field"><label>Prénom</label><input id="signupFirst" placeholder="Prénom" autocomplete="given-name"></div>
+        <div class="field"><label>NOM</label><input id="signupLast" placeholder="NOM" autocomplete="family-name" style="text-transform:uppercase;"></div>
+      </div>
+      ${hasRdv
+        ? `<div class="meet-title">Lieu de rencontre</div>
+           <label class="checkline tight"><input type="checkbox" id="signupMeetRdv" checked> Point de RdV (${escapeHtml(h.rdv)})</label>
+           <label class="checkline tight"><input type="checkbox" id="signupMeetDepart"> Lieu de départ${h.departLabel ? ' (' + escapeHtml(h.departLabel) + ')' : ''}</label>`
+        : `<p class="hint" style="margin:0 0 10px;">Rencontre au lieu de départ${h.departLabel ? ' : ' + escapeHtml(h.departLabel) : ''}.</p>`}
+      <button class="subtle" data-action="signup" type="button">S'inscrire</button>`;
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="modal-close-row">
+      <div class="detail-head">
+        <h2>${escapeHtml(h.titre)}${cancelled ? '<span class="status-badge">Annulée</span>' : ''}</h2>
+      </div>
+      <button data-action="close" title="Fermer">✕</button>
+    </div>
+    ${cancelBanner}
+    ${hikeInfoHtml(h)}
+    ${hikeDescHtml(h)}
+    <button class="collapse-btn" data-action="toggle-participants" type="button"><span id="pChev">${participantsOpen ? '▾' : '▸'}</span> Participants (${parts.length})</button>
+    <div id="participantsBody" style="display:${participantsOpen ? 'block' : 'none'};">${tableHtml}</div>
+    ${signupHtml}
+    <div class="section-title">Discussion</div>
+    <div>${commentsHtml}</div>
+    <div class="comment-form">
+      <input id="commentAuthor" placeholder="Prénom">
+      <input id="commentText" placeholder="Un message pour le groupe…">
+      <button class="subtle" data-action="comment" type="button">Envoyer</button>
+    </div>
+    <hr class="sep">
+    <div class="section-title">Partager / gérer</div>
+    <div class="action-row">
+      <button class="subtle" data-action="toggle-share" type="button">🔗 Lien d'inscription</button>
+      <button class="subtle" data-action="edit" type="button">✏️ Modifier</button>
+      <button class="subtle" data-action="toggle-cancel" type="button">${cancelled ? '↩ Rétablir la rando' : '🚫 Annuler la rando'}</button>
+      <button class="danger" data-action="delete" type="button">Supprimer</button>
+    </div>
+    ${cancelled ? '' : `<div id="cancelPanel" style="display:none;margin-top:12px;">
+      <div class="field"><label>Raison de l'annulation (affichée sur la page principale)</label><input id="cancelReason" placeholder="Ex. Météo défavorable"></div>
+      <div class="action-row" style="margin-top:0;">
+        <button class="danger" data-action="confirm-cancel" type="button">Confirmer l'annulation</button>
+        <button class="subtle" data-action="abort-cancel" type="button">Retour</button>
+      </div>
+    </div>`}
+    <div id="shareLinkPanel" style="display:none;margin-top:12px;">
+      <button class="subtle" data-action="gen-join-link" type="button">Générer et copier le lien</button>
+      <input class="link-output" id="joinLinkOut" readonly onclick="this.select()">
+    </div>
+  `;
+
+  const c = document.getElementById('detailContent');
+  c.querySelector('[data-action="close"]').onclick = closeDetail;
+  c.querySelector('[data-action="toggle-participants"]').onclick = ()=>{
+    participantsOpen = !participantsOpen;
+    document.getElementById('participantsBody').style.display = participantsOpen ? 'block' : 'none';
+    document.getElementById('pChev').textContent = participantsOpen ? '▾' : '▸';
+  };
+  bindExclusive('signupMeetRdv', 'signupMeetDepart');
+  const sb = c.querySelector('[data-action="signup"]');
+  if(sb) sb.onclick = ()=>{
+    const prenom = document.getElementById('signupFirst').value.trim();
+    const nom = document.getElementById('signupLast').value.trim().toUpperCase();
+    if(!prenom || !nom){ alert('Merci de renseigner votre prénom et votre NOM.'); return; }
+    const direct = !hasRdv || document.getElementById('signupMeetDepart').checked;
+    const person = {prenom, nom, lieu: direct ? 'depart' : 'rdv'};
+    participantsOpen = true;
+    syncMutate(s=>addParticipant(s, h.id, person), `Inscription de ${prenom} ${nom} — ${h.titre}`);
+  };
+  c.querySelectorAll('[data-action="unsignup"]').forEach(btn=>{
+    btn.onclick = ()=> syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===h.id); if(hh) hh.participants = (hh.participants||[]).filter(x=>pKey(x)!==btn.dataset.key); return s; }, `Désinscription — ${h.titre}`);
+  });
+  c.querySelector('[data-action="comment"]').onclick = ()=>{
+    const author = document.getElementById('commentAuthor').value.trim();
+    const text = document.getElementById('commentText').value.trim();
+    if(!author || !text) return;
+    syncMutate(s=>{ const hh=s.hikes.find(x=>x.id===h.id); if(hh){ hh.comments=hh.comments||[]; hh.comments.push({author, text, at: new Date().toISOString()}); } return s; }, `Commentaire de ${author} — ${h.titre}`);
+  };
+  c.querySelector('[data-action="toggle-cancel"]').onclick = ()=>{
+    if(cancelled){
+      syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===h.id); if(hh){ hh.statut = 'active'; hh.raisonAnnulation = ''; } return s; }, `Rétablissement — ${h.titre}`);
+    } else {
+      const panel = document.getElementById('cancelPanel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if(panel.style.display === 'block') document.getElementById('cancelReason').focus();
+    }
+  };
+  const cp = c.querySelector('[data-action="confirm-cancel"]');
+  if(cp) cp.onclick = ()=>{
+    const reason = document.getElementById('cancelReason').value.trim();
+    syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===h.id); if(hh){ hh.statut = 'annulee'; hh.raisonAnnulation = reason; } return s; }, `Annulation — ${h.titre}`);
+  };
+  const ab = c.querySelector('[data-action="abort-cancel"]');
+  if(ab) ab.onclick = ()=>{ document.getElementById('cancelPanel').style.display = 'none'; };
+  c.querySelector('[data-action="delete"]').onclick = ()=>{
+    if(!confirm('Supprimer définitivement cette rando ?')) return;
+    syncMutate(s=>{ s.hikes = s.hikes.filter(x=>x.id!==h.id); return s; }, `Suppression — ${h.titre}`);
+    closeDetail();
+  };
+  c.querySelector('[data-action="edit"]').onclick = ()=>{ closeDetail(); openModal(h); };
+  c.querySelector('[data-action="toggle-share"]').onclick = ()=>{
+    const panel = document.getElementById('shareLinkPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  };
+  c.querySelector('[data-action="gen-join-link"]').onclick = ()=>{
+    const link = buildJoinLink(h.id);
+    const out = document.getElementById('joinLinkOut');
+    out.value = link; out.select();
+    navigator.clipboard && navigator.clipboard.writeText(link).catch(()=>{});
+  };
+
+  bd.classList.add('open');
+}
+
+// ---------- Popup ajout / modification ----------
+function openModal(hike){
+  editingId = hike ? hike.id : null;
+  document.getElementById('modalTitle').textContent = hike ? 'Modifier la randonnée' : 'Proposer une randonnée';
+  document.getElementById('btnSave').textContent = hike ? 'Enregistrer les modifications' : 'Enregistrer la rando';
+  document.getElementById('f_titre').value = hike ? hike.titre : '';
+  document.getElementById('f_orga').value = hike ? (hike.orga||'') : '';
+  document.getElementById('f_date').value = hike ? hike.date : '';
+  document.getElementById('f_hdep').value = hike ? (hike.heureDepart||'') : DEFAULT_HEURE_DEPART;
+  document.getElementById('f_rdv').value = hike ? (hike.rdv||'') : '';
+  document.getElementById('f_diff').value = hike ? (hike.difficulte||'') : '';
+  document.getElementById('f_duree').value = hike ? (hike.duree||'') : '';
+  document.getElementById('f_km').value = hike && hike.km != null ? hike.km : '';
+  document.getElementById('f_deniv').value = hike && hike.deniv != null ? hike.deniv : '';
+  document.getElementById('f_arrivee').value = hike ? (hike.arrivee||'') : '';
+  document.getElementById('f_boucle').checked = hike ? isBoucle(hike) : true;
+  syncBoucleUI();
+  document.getElementById('f_adresse').value = hike ? (hike.departLabel||'') : '';
+  document.getElementById('f_desc').value = hike ? (hike.description||'') : '';
+  document.getElementById('f_raison').value = hike ? (hike.raisonAnnulation||'') : '';
+  document.getElementById('f_raison_field').style.display = (hike && hike.statut === 'annulee') ? 'block' : 'none';
+  document.getElementById('modalBackdrop').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
+
+async function saveHike(){
+  const titre = document.getElementById('f_titre').value.trim();
+  const date = document.getElementById('f_date').value;
+  if(!titre || !date){ alert('Merci de renseigner au moins un titre et une date.'); return; }
+  const fields = {
+    titre, orga: document.getElementById('f_orga').value.trim(), date,
+    heureDepart: document.getElementById('f_hdep').value, rdv: document.getElementById('f_rdv').value.trim(), difficulte: document.getElementById('f_diff').value,
+    duree: document.getElementById('f_duree').value.trim(),
+    km: parseFloat(document.getElementById('f_km').value) || null,
+    deniv: parseInt(document.getElementById('f_deniv').value) || null,
+    boucle: document.getElementById('f_boucle').checked,
+    arrivee: document.getElementById('f_boucle').checked ? '' : document.getElementById('f_arrivee').value.trim(),
+    departLabel: document.getElementById('f_adresse').value.trim(),
+    description: document.getElementById('f_desc').value.trim()
+  };
+  if(document.getElementById('f_raison_field').style.display !== 'none') fields.raisonAnnulation = document.getElementById('f_raison').value.trim();
+  if(editingId){
+    const id = editingId;
+    await syncMutate(s=>{ const idx=(s.hikes||[]).findIndex(x=>x.id===id); if(idx>-1) s.hikes[idx] = Object.assign({}, s.hikes[idx], fields); return s; }, `Modification — ${titre}`);
+    closeModal();
+    openDetail(id);
+  } else {
+    const h = Object.assign({id: uid(), statut: 'active', participants: [], comments: []}, fields);
+    await syncMutate(s=>{ s.hikes = s.hikes || []; s.hikes.push(h); return s; }, `Nouvelle rando — ${titre}`);
+    closeModal();
+    showPast = false; document.getElementById('chkPast').checked = false;
+    openDetail(h.id);
+  }
+}
+
+// ---------- Lien d'inscription ----------
+function buildJoinLink(hikeId){
+  const cfg = getConfig();
+  const params = new URLSearchParams();
+  if(cfg.owner) params.set('owner', cfg.owner);
+  if(cfg.repo) params.set('repo', cfg.repo);
+  params.set('branch', cfg.branch); params.set('path', cfg.path);
+  params.set('join', hikeId);
+  if(cfg.token) params.set('token', cfg.token);
+  return location.origin + location.pathname + '?' + params.toString();
+}
+function openJoinPrompt(h){
+  const cancelled = h.statut === 'annulee';
+  const hasRdv = !!(h.rdv && h.rdv.trim());
+  document.getElementById('joinHikeTitle').textContent = h.titre;
+  document.getElementById('joinHikeInfo').innerHTML = hikeInfoHtml(h);
+  document.getElementById('joinHikeDesc').innerHTML = hikeDescHtml(h);
+  const jparts = (h.participants || []).map(normP);
+  document.getElementById('joinPartLabel').textContent = 'Participants (' + jparts.length + ')';
+  document.getElementById('joinPartBody').innerHTML = jparts.length === 0
+    ? '<p style="color:#8a9186;font-size:13px;">Personne inscrit pour le moment.</p>'
+    : '<table class="ptable"><thead><tr><th>Participant·e</th><th>Rencontre</th></tr></thead><tbody>'
+      + jparts.map(p => '<tr><td>' + escapeHtml(pLabel(p)) + '</td><td>' + meetLabel(p.lieu) + '</td></tr>').join('')
+      + '</tbody></table>';
+  document.getElementById('joinPartBody').style.display = 'none';
+  document.getElementById('joinPartChev').textContent = '▸';
+  document.getElementById('joinName').value = '';
+  document.getElementById('joinLast').value = '';
+  document.getElementById('joinMeetRdv').checked = true;
+  document.getElementById('joinMeetDepart').checked = false;
+  document.getElementById('joinMeetRow').style.display = hasRdv ? 'block' : 'none';
+  document.getElementById('joinMeetRdvText').textContent = 'Point de RdV (' + (h.rdv || '') + ')';
+  document.getElementById('joinMeetDepartText').textContent = 'Lieu de départ' + (h.departLabel ? ' (' + h.departLabel + ')' : '');
+  document.getElementById('joinCancelledNote').innerHTML = '<b>Rando annulée</b>' + (h.raisonAnnulation ? escapeHtml(h.raisonAnnulation) + ' — ' : '') + 'Les inscriptions sont fermées.';
+  document.getElementById('joinCancelledNote').style.display = cancelled ? 'block' : 'none';
+  document.getElementById('joinFormBody').style.display = cancelled ? 'none' : 'block';
+  document.getElementById('btnJoinConfirm').disabled = cancelled;
+  document.getElementById('joinModalBackdrop').dataset.hikeId = h.id;
+  document.getElementById('joinModalBackdrop').classList.add('open');
+}
+
+// ---------- Export / Import ----------
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'randos-groupe.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    try{
+      const incoming = JSON.parse(reader.result);
+      if(!incoming.hikes) throw new Error('format invalide');
+      await syncMutate(s=>{
+        const ids = new Set((s.hikes||[]).map(h=>h.id));
+        const merged = (s.hikes||[]).slice();
+        incoming.hikes.forEach(h=>{ if(!ids.has(h.id)) merged.push(h); });
+        s.hikes = merged; return s;
+      }, 'Import JSON');
+    }catch(e){ alert("Ce fichier n'est pas un export valide du carnet de randos."); }
+  };
+  reader.readAsText(file);
+}
+
+// ---------- Paramètres ----------
+function openSettings(){
+  const cfg = getConfig();
+  document.getElementById('s_owner').value = cfg.owner || '';
+  document.getElementById('s_repo').value = cfg.repo || '';
+  document.getElementById('s_branch').value = cfg.branch || 'main';
+  document.getElementById('s_path').value = cfg.path || 'randos.json';
+  document.getElementById('s_token').value = cfg.token || '';
+  document.getElementById('s_includeToken').checked = false;
+  document.getElementById('s_link').value = '';
+  document.getElementById('settingsBackdrop').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settingsBackdrop').classList.remove('open'); }
+function readSettingsForm(){
+  return {
+    owner: document.getElementById('s_owner').value.trim(), repo: document.getElementById('s_repo').value.trim(),
+    branch: document.getElementById('s_branch').value.trim() || 'main', path: document.getElementById('s_path').value.trim() || 'randos.json',
+    token: document.getElementById('s_token').value.trim()
+  };
+}
+function buildShareLink(includeToken){
+  const cfg = readSettingsForm();
+  const params = new URLSearchParams();
+  if(cfg.owner) params.set('owner', cfg.owner);
+  if(cfg.repo) params.set('repo', cfg.repo);
+  params.set('branch', cfg.branch); params.set('path', cfg.path);
+  if(includeToken && cfg.token) params.set('token', cfg.token);
+  return location.origin + location.pathname + '?' + params.toString();
+}
+
+// ---------- Bindings ----------
+document.getElementById('btnAdd').onclick = ()=> openModal();
+document.getElementById('btnCancel').onclick = closeModal;
+document.getElementById('btnSave').onclick = saveHike;
+document.getElementById('f_boucle').onchange = syncBoucleUI;
+document.getElementById('btnExport').onclick = exportData;
+document.getElementById('btnImport').onclick = ()=>document.getElementById('fileImport').click();
+document.getElementById('fileImport').onchange = (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=''; };
+document.getElementById('chkPast').onchange = (e)=>{ showPast = e.target.checked; renderList(); };
+document.getElementById('btnRefresh').onclick = initialLoad;
+document.getElementById('btnSettings').onclick = openSettings;
+document.getElementById('btnBannerSettings').onclick = openSettings;
+document.getElementById('btnSettingsCancel').onclick = closeSettings;
+document.querySelector('#settingsBackdrop [data-action="close-settings"]').onclick = closeSettings;
+document.getElementById('btnSettingsSave').onclick = ()=>{
+  saveConfig(readSettingsForm());
+  closeSettings();
+  initialLoad();
+};
+document.getElementById('btnGenLink').onclick = ()=>{
+  saveConfig(readSettingsForm());
+  const link = buildShareLink(document.getElementById('s_includeToken').checked);
+  const out = document.getElementById('s_link');
+  out.value = link; out.select();
+  navigator.clipboard && navigator.clipboard.writeText(link).catch(()=>{});
+};
+bindExclusive('joinMeetRdv', 'joinMeetDepart');
+document.getElementById('joinPartToggle').onclick = ()=>{
+  const body = document.getElementById('joinPartBody');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  document.getElementById('joinPartChev').textContent = open ? '▾' : '▸';
+};
+document.getElementById('btnJoinCancel').onclick = ()=> document.getElementById('joinModalBackdrop').classList.remove('open');
+document.getElementById('btnJoinConfirm').onclick = async ()=>{
+  const prenom = document.getElementById('joinName').value.trim();
+  const nom = document.getElementById('joinLast').value.trim().toUpperCase();
+  if(!prenom || !nom){ alert('Merci de renseigner votre prénom et votre NOM.'); return; }
+  const hikeId = document.getElementById('joinModalBackdrop').dataset.hikeId;
+  const hk = (state.hikes||[]).find(x=>x.id===hikeId);
+  const hasRdv = !!(hk && hk.rdv && hk.rdv.trim());
+  const direct = !hasRdv || document.getElementById('joinMeetDepart').checked;
+  const person = {prenom, nom, lieu: direct ? 'depart' : 'rdv'};
+  await syncMutate(s=>addParticipant(s, hikeId, person), `Inscription (lien) de ${prenom} ${nom}`);
+  document.getElementById('joinModalBackdrop').classList.remove('open');
+  openDetail(hikeId, true);
+};
+document.querySelectorAll('.modal-backdrop').forEach(bd=>{
+  bd.addEventListener('click', e=>{
+    if(e.target === bd){
+      bd.classList.remove('open');
+      if(bd.id === 'detailBackdrop') selectedId = null;
+    }
+  });
+});
+
+// ---------- Démarrage ----------
+async function boot(){
+  applyUrlConfig();
+  await initialLoad();
+  if(pendingJoin){
+    const h = (state.hikes||[]).find(x=>x.id===pendingJoin);
+    if(h) openJoinPrompt(h);
+    else alert("Cette rando n'existe plus ou le lien d'inscription est invalide.");
+    pendingJoin = null;
+  } else {
+    const key = x => x.date + 'T' + (x.heureDepart || '00:00');
+    const next = (state.hikes || []).filter(x => !isPast(x) && x.statut !== 'annulee').sort((a, b) => key(a).localeCompare(key(b)))[0];
+    if(next) openDetail(next.id);
+  }
+}
+boot();
+setInterval(()=>{
+  const anyOpen = document.querySelector('.modal-backdrop.open');
+  const justWrote = (Date.now() - lastWriteAt) < 20000;
+  if(!anyOpen && !justWrote) initialLoad();
+}, 60000);
+</script>
+</body>
+</html>
