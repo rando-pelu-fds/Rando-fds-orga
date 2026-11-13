@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sentiers — carnet de randos du groupe</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -162,6 +163,12 @@
   .rt-toolbar select{height:auto;padding:4px 8px;font-size:13px;}
   .rt-editor{min-height:140px;border:1.5px solid var(--line);background:#fff;padding:10px 12px;font-size:14px;overflow-wrap:anywhere;}
   .rt-editor:focus{outline:none;border-color:var(--pine);}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .grid3>*{min-width:0;}
+  @media (max-width:600px){ .grid3{grid-template-columns:1fr;} }
+  .rt-toolbar input[type=color]{width:34px;height:26px;padding:1px;border:1.5px solid var(--line);cursor:pointer;}
+  button.icon-btn{font-size:17px;padding:5px 10px;line-height:1;}
+  .leaflet-container{font-family:inherit;}
 </style>
 </head>
 <body>
@@ -172,7 +179,7 @@
     <span class="status-pill local" id="statusPill"><span class="dot"></span><span id="statusText">Non configuré</span></span>
   </div>
   <div class="top-actions">
-    <button class="subtle" id="btnSettings">⚙ Paramètres</button>
+    <button class="subtle icon-btn" id="btnSettings" title="Paramètres (réservé aux administrateurs)" aria-label="Paramètres">⚙</button>
     <button id="btnAdd">+ Proposer une rando</button>
   </div>
 </header>
@@ -218,7 +225,7 @@
   </section>
 </main>
 
-<footer>Les randos sont lues et publiées depuis un dépôt GitHub (fichier JSON) si configuré ; sinon elles restent stockées localement dans ce navigateur. <span style="opacity:.6;">· v2026.11.13-a</span></footer>
+<footer><span style="opacity:.6;">v2026.11.14-a</span></footer>
 
 <!-- Popup détail d'une rando -->
 <div class="modal-backdrop" id="detailBackdrop">
@@ -248,9 +255,18 @@
         <label class="checkline tight"><input type="checkbox" id="joinMeetDepart"> <span id="joinMeetDepartText"></span></label>
       </div>
     </div>
-    <button class="subtle" id="btnJoinCalendar" type="button" style="margin-top:14px;">📅 Ouvrir le Calendrier des Randos</button>
+    <button class="collapse-btn" id="joinDiscToggle" type="button"><span id="joinDiscChev">▸</span> <span id="joinDiscLabel">Discussion</span></button>
+    <div id="joinDiscBody" style="display:none;">
+      <div id="joinDiscList"></div>
+      <div class="comment-form">
+        <input id="joinCommentAuthor" placeholder="Prénom">
+        <input id="joinCommentText" placeholder="Un message pour le groupe…">
+        <button class="subtle" id="btnJoinComment" type="button">Envoyer</button>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="ghost" id="btnJoinCancel" type="button">Annuler</button>
+      <button class="subtle" id="btnJoinCalendar" type="button">📅 Ouvrir le Calendrier des Randos</button>
       <button id="btnJoinConfirm" type="button">Confirmer mon inscription</button>
     </div>
   </div>
@@ -291,6 +307,26 @@
     <input class="link-output" id="s_link" readonly onclick="this.select()">
 
     <hr class="sep">
+    <h3 style="font-size:16px;">Valeurs par défaut d'une nouvelle rando</h3>
+    <p class="lead">Ces valeurs pré-remplissent le formulaire de création (elles restent modifiables). Enregistrées dans ce navigateur, avec le bouton « Enregistrer les paramètres ».</p>
+    <div class="grid2">
+      <div class="field"><label>Organisateur·rice</label><input id="d_orga"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="d_tel"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Lieu de rendez-vous</label><input id="d_rdv"></div>
+      <div class="field"><label>Heure de rendez-vous</label><input type="time" id="d_hrdv"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Lieu de départ</label><input id="d_adresse"></div>
+      <div class="field"><label>Heure de départ de marche</label><input type="time" id="d_hdep"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Difficulté</label><select id="d_diff"><option value="">—</option><option>Facile</option><option>Moyenne</option><option>Difficile</option><option>Très difficile</option></select></div>
+      <div class="field"><label>Durée prévue</label><input id="d_duree" placeholder="ex. 4h30"></div>
+    </div>
+
+    <hr class="sep">
     <h3 style="font-size:16px;">Modèle du texte d'e-mail (organisateur)</h3>
     <p class="lead">Mise en forme libre. Le menu « Insérer un champ » ajoute des champs de la rando, remplacés automatiquement à la génération.</p>
     <div class="rt-toolbar">
@@ -299,6 +335,8 @@
       <button class="subtle" type="button" data-cmd="underline"><u>S</u></button>
       <button class="subtle" type="button" data-cmd="insertUnorderedList">• Liste</button>
       <button class="subtle" type="button" data-cmd="createLink">🔗 Lien</button>
+      <select id="s_tplSize"><option value="">Taille…</option><option value="12">Petit</option><option value="14">Normal</option><option value="18">Grand</option><option value="24">Très grand</option></select>
+      <label title="Couleur du texte" style="font-size:12.5px;color:#5b6b60;display:inline-flex;align-items:center;gap:4px;">Couleur <input type="color" id="s_tplColor" value="#1e2621"></label>
       <button class="subtle" type="button" data-cmd="removeFormat">Effacer le format</button>
       <select id="s_tplField"><option value="">Insérer un champ…</option></select>
     </div>
@@ -323,30 +361,41 @@
     <div class="field"><label>Titre</label><input id="f_titre" placeholder="Ex. Boucle des Trois Cols"></div>
     <div class="grid2">
       <div class="field"><label>Date</label><input type="date" id="f_date"></div>
-      <div class="field"><label>Heure de départ</label><input type="time" id="f_hdep"></div>
+      <div class="field"><label>Difficulté</label>
+        <select id="f_diff"><option value="">—</option><option>Facile</option><option>Moyenne</option><option>Difficile</option><option>Très difficile</option></select>
+      </div>
     </div>
     <div class="grid2">
       <div class="field"><label>Organisateur·rice</label><input id="f_orga"></div>
       <div class="field"><label>Téléphone de l'organisateur·rice</label><input type="tel" id="f_tel" placeholder="06 12 34 56 78" autocomplete="tel" inputmode="tel"></div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>Difficulté</label>
-        <select id="f_diff"><option value="">—</option><option>Facile</option><option>Moyenne</option><option>Difficile</option><option>Très difficile</option></select>
-      </div>
-      <div class="field"><label>Durée prévue</label><input id="f_duree" placeholder="ex. 4h30"></div>
-    </div>
-    <div class="grid2">
+    <div class="grid3">
       <div class="field"><label>Distance (km)</label><input type="number" step="0.1" id="f_km"></div>
       <div class="field"><label>Dénivelé (m D+)</label><input type="number" id="f_deniv"></div>
+      <div class="field"><label>Durée prévue</label><input id="f_duree" placeholder="ex. 4h30"></div>
     </div>
     <div class="grid2">
       <div class="field"><label>Lieu de rendez-vous</label><input id="f_rdv" placeholder="Ex. Parking de la gare"></div>
       <div class="field"><label>Heure de rendez-vous</label><input type="time" id="f_hrdv"></div>
     </div>
-    <div class="field"><label>Lieu de départ</label><input id="f_adresse" placeholder="Ex. Parking du Col des Aravis, Manigod"></div>
+    <div class="grid2">
+      <div class="field"><label>Lieu de départ</label><input id="f_adresse" placeholder="Ex. Parking du Col des Aravis, Manigod"></div>
+      <div class="field"><label>Heure de départ de marche</label><input type="time" id="f_hdep"></div>
+    </div>
     <label class="checkline" style="margin:0 0 12px;"><input type="checkbox" id="f_boucle" checked> Rando en boucle (l'arrivée est le point de départ)</label>
     <div class="field" id="f_arrivee_field" style="display:none;"><label>Lieu d'arrivée</label><input id="f_arrivee" placeholder="Ex. Refuge du Lac"></div>
     <div class="field"><label>Description (facultatif)</label><textarea id="f_desc" rows="3" placeholder="Infos utiles : équipement, pique-nique, covoiturage…"></textarea></div>
+    <button class="collapse-btn" id="gpxToggle" type="button"><span id="gpxChev">▸</span> Carte et trace GPX</button>
+    <div id="gpxBody" style="display:none;">
+      <div class="action-row" style="margin-top:0;">
+        <button class="subtle" id="btnGpxImport" type="button">📂 Importer un fichier .gpx</button>
+        <button class="subtle" id="btnGpxDownload" type="button">⬇ Télécharger le fichier .gpx</button>
+        <button class="subtle" id="btnGpxRemove" type="button">Retirer la trace</button>
+        <input type="file" id="fileGpx" accept=".gpx,application/gpx+xml,text/xml,application/xml" style="display:none">
+      </div>
+      <div class="hint" id="gpxInfo"></div>
+      <div id="gpxMap" style="height:280px;margin:8px 0 14px;border:1.5px solid var(--line);"></div>
+    </div>
     <div class="field" id="f_raison_field" style="display:none;"><label>Raison de l'annulation</label><input id="f_raison" placeholder="Ex. Météo défavorable"></div>
     <div class="modal-actions">
       <button class="ghost" id="btnCancel" type="button">Annuler</button>
@@ -369,16 +418,18 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 const CONFIG_KEY = 'sentiers_gh_config_v1';
 const TOKEN_KEY = 'sentiers_gh_token_v1';
 const LOCAL_CACHE_KEY = 'sentiers_data_cache_v1';
 const MAIL_TPL_KEY = 'sentiers_mail_tpl_v1';
+const DEFAULTS_KEY = 'sentiers_defaults_v1';
 const DEFAULT_HEURE_DEPART = '09:00';
 const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const DOW = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const DEFAULT_MAIL_TPL = '<p>Bonjour à tous,</p><p>Je vous propose la randonnée <b>{titre}</b> le <b>{date}</b>.</p><ul><li>Rendez-vous : {heure_rdv} – {rdv}</li><li>Départ de la marche : {heure_depart} – {depart}</li><li>Parcours : {parcours}</li><li>{km} km – {deniv} m D+ – durée {duree}</li><li>Difficulté : {difficulte}</li></ul><p>{description}</p><p>Inscription : <a href="{lien_inscription}">{lien_inscription}</a></p><p>{orga} – {tel}</p>';
-const TPL_FIELDS = [['titre','Titre'],['date','Date'],['heure_rdv','Heure de RdV'],['rdv','Lieu de RdV'],['heure_depart','Heure de départ'],['depart','Lieu de départ'],['arrivee',"Lieu d'arrivée"],['parcours','Parcours (boucle / arrivée)'],['orga','Organisateur'],['tel','Téléphone'],['km','Distance (km)'],['deniv','Dénivelé'],['duree','Durée'],['difficulte','Difficulté'],['description','Description'],['participants','Liste des participants'],['lien_inscription',"Lien d'inscription"]];
+const TPL_FIELDS = [['titre','Titre'],['date','Date'],['heure_rdv','Heure de RdV'],['rdv','Lieu de RdV'],['heure_depart','Heure de départ de marche'],['depart','Lieu de départ'],['arrivee',"Lieu d'arrivée"],['parcours','Parcours (boucle / arrivée)'],['orga','Organisateur'],['tel','Téléphone'],['km','Distance (km)'],['deniv','Dénivelé'],['duree','Durée'],['difficulte','Difficulté'],['description','Description'],['participants','Liste des participants'],['lien_inscription',"Lien d'inscription"]];
 
 let state = { hikes: [] };
 let selectedId = null;
@@ -387,6 +438,8 @@ let showPast = false;
 let pendingJoin = null;
 let activeTab = 'calendar';
 let adminOpen = false;
+let discussionOpen = false;
+let curGpx = null, gpxMap = null, gpxLayer = null;
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 
@@ -532,7 +585,7 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':
 function hikeInfoHtml(h){
   const rows = [
     ['Date', h.date ? fmtDate(h.date) : ''],
-    ['Heure de départ', h.heureDepart],
+    ['Heure de départ de marche', h.heureDepart],
     ['Heure de RdV', h.heureRdv],
     ['Rendez-vous', h.rdv],
     ['Lieu de départ', h.departLabel],
@@ -727,7 +780,7 @@ function bindExclusive(idA, idB){
 function hikeDescHtml(h){ return h.description ? '<div class="desc">' + escapeHtml(h.description) + '</div>' : ''; }
 
 function openDetail(id, expand){
-  if(selectedId !== id){ participantsOpen = false; adminOpen = false; }
+  if(selectedId !== id){ participantsOpen = false; adminOpen = false; discussionOpen = false; }
   if(expand) participantsOpen = true;
   selectedId = id;
   renderDetail();
@@ -749,7 +802,7 @@ function renderDetail(){
   const tableHtml = parts.length === 0
     ? '<p style="color:#8a9186;font-size:13px;">Personne inscrit pour le moment.</p>'
     : `<table class="ptable"><thead><tr><th>Participant·e</th><th>Rencontre</th><th></th></tr></thead><tbody>
-        ${parts.map(p=>`<tr><td>${escapeHtml(pLabel(p))}</td><td>${meetLabel(p.lieu)}</td><td class="actions"><button data-key="${escapeHtml(pKey(p))}" data-action="unsignup">Désinscrire</button></td></tr>`).join('')}
+        ${parts.map(p=>`<tr><td>${escapeHtml(pLabel(p))}</td><td>${meetLabel(p.lieu)}</td><td class="actions"><button data-key="${escapeHtml(pKey(p))}" data-name="${escapeHtml(pLabel(p))}" data-action="unsignup">Désinscrire</button></td></tr>`).join('')}
        </tbody></table>`;
 
   const comments = h.comments || [];
@@ -785,12 +838,14 @@ function renderDetail(){
     <button class="collapse-btn" data-action="toggle-participants" type="button"><span id="pChev">${participantsOpen ? '▾' : '▸'}</span> Participants (${parts.length})</button>
     <div id="participantsBody" style="display:${participantsOpen ? 'block' : 'none'};">${tableHtml}</div>
     ${signupHtml}
-    <div class="section-title">Discussion</div>
-    <div>${commentsHtml}</div>
-    <div class="comment-form">
-      <input id="commentAuthor" placeholder="Prénom">
-      <input id="commentText" placeholder="Un message pour le groupe…">
-      <button class="subtle" data-action="comment" type="button">Envoyer</button>
+    <button class="collapse-btn" data-action="toggle-discussion" type="button"><span id="dChev">${discussionOpen ? '▾' : '▸'}</span> Discussion (${comments.length})</button>
+    <div id="discussionBody" style="display:${discussionOpen ? 'block' : 'none'};">
+      <div>${commentsHtml}</div>
+      <div class="comment-form">
+        <input id="commentAuthor" placeholder="Prénom">
+        <input id="commentText" placeholder="Un message pour le groupe…">
+        <button class="subtle" data-action="comment" type="button">Envoyer</button>
+      </div>
     </div>
     <hr class="sep">
     <div class="admin-zone">
@@ -801,6 +856,7 @@ function renderDetail(){
           <button class="subtle" data-action="toggle-share" type="button">🔗 Lien d'inscription</button>
           <button class="subtle" data-action="mail" type="button">✉️ Générer le texte d'e-mail</button>
           <button class="subtle" data-action="edit" type="button">✏️ Modifier</button>
+          <button class="subtle" data-action="duplicate" type="button">📄 Dupliquer la rando</button>
           <button class="subtle" data-action="toggle-cancel" type="button">${cancelled ? '↩ Rétablir la rando' : '🚫 Annuler la rando'}</button>
           <button class="danger" data-action="delete" type="button">Supprimer</button>
         </div>
@@ -826,6 +882,11 @@ function renderDetail(){
     document.getElementById('participantsBody').style.display = participantsOpen ? 'block' : 'none';
     document.getElementById('pChev').textContent = participantsOpen ? '▾' : '▸';
   };
+  c.querySelector('[data-action="toggle-discussion"]').onclick = ()=>{
+    discussionOpen = !discussionOpen;
+    document.getElementById('discussionBody').style.display = discussionOpen ? 'block' : 'none';
+    document.getElementById('dChev').textContent = discussionOpen ? '▾' : '▸';
+  };
   bindExclusive('signupMeetRdv', 'signupMeetDepart');
   const sb = c.querySelector('[data-action="signup"]');
   if(sb) sb.onclick = ()=>{
@@ -838,12 +899,13 @@ function renderDetail(){
     syncMutate(s=>addParticipant(s, h.id, person), `Inscription de ${prenom} ${nom} — ${h.titre}`);
   };
   c.querySelectorAll('[data-action="unsignup"]').forEach(btn=>{
-    btn.onclick = ()=> syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===h.id); if(hh) hh.participants = (hh.participants||[]).filter(x=>pKey(x)!==btn.dataset.key); return s; }, `Désinscription — ${h.titre}`);
+    btn.onclick = ()=> confirm('Désinscrire ' + btn.dataset.name + ' de cette rando ?') && syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===h.id); if(hh) hh.participants = (hh.participants||[]).filter(x=>pKey(x)!==btn.dataset.key); return s; }, `Désinscription — ${h.titre}`);
   });
   c.querySelector('[data-action="comment"]').onclick = ()=>{
     const author = document.getElementById('commentAuthor').value.trim();
     const text = document.getElementById('commentText').value.trim();
     if(!author || !text) return;
+    discussionOpen = true;
     syncMutate(s=>{ const hh=s.hikes.find(x=>x.id===h.id); if(hh){ hh.comments=hh.comments||[]; hh.comments.push({author, text, at: new Date().toISOString()}); } return s; }, `Commentaire de ${author} — ${h.titre}`);
   };
 
@@ -882,6 +944,10 @@ function renderDetail(){
     if(!adminConfirm('MODIFIER les informations de cette rando')) return;
     closeDetail(); openModal(h);
   };
+  c.querySelector('[data-action="duplicate"]').onclick = ()=>{
+    if(!adminConfirm('DUPLIQUER cette rando (les participants et la discussion ne seront pas repris)')) return;
+    closeDetail(); openModal(h, null, true);
+  };
   c.querySelector('[data-action="toggle-share"]').onclick = ()=>{
     if(!adminConfirm("générer le lien d'inscription (il peut contenir votre jeton d'accès si vous en avez configuré un)")) return;
     const panel = document.getElementById('shareLinkPanel');
@@ -898,28 +964,33 @@ function renderDetail(){
 }
 
 // ---------- Popup ajout / modification ----------
-function openModal(hike, presetDate){
-  editingId = hike ? hike.id : null;
-  document.getElementById('modalTitle').textContent = hike ? 'Modifier la randonnée' : 'Proposer une randonnée';
-  document.getElementById('btnSave').textContent = hike ? 'Enregistrer les modifications' : 'Enregistrer la rando';
+function openModal(hike, presetDate, asCopy){
+  editingId = (hike && !asCopy) ? hike.id : null;
+  const d = hike ? {} : getDefaults();
+  document.getElementById('modalTitle').textContent = asCopy ? 'Dupliquer la randonnée' : (hike ? 'Modifier la randonnée' : 'Proposer une randonnée');
+  document.getElementById('btnSave').textContent = editingId ? 'Enregistrer les modifications' : (asCopy ? 'Enregistrer la copie' : 'Enregistrer la rando');
   document.getElementById('f_titre').value = hike ? hike.titre : '';
-  document.getElementById('f_orga').value = hike ? (hike.orga||'') : '';
-  document.getElementById('f_tel').value = hike ? (hike.tel||'') : '';
+  document.getElementById('f_orga').value = hike ? (hike.orga||'') : (d.orga||'');
+  document.getElementById('f_tel').value = hike ? (hike.tel||'') : (d.tel||'');
   document.getElementById('f_date').value = hike ? hike.date : (presetDate || '');
-  document.getElementById('f_hdep').value = hike ? (hike.heureDepart||'') : DEFAULT_HEURE_DEPART;
-  document.getElementById('f_rdv').value = hike ? (hike.rdv||'') : '';
-  document.getElementById('f_hrdv').value = hike ? (hike.heureRdv||'') : '';
-  document.getElementById('f_diff').value = hike ? (hike.difficulte||'') : '';
-  document.getElementById('f_duree').value = hike ? (hike.duree||'') : '';
+  document.getElementById('f_hdep').value = hike ? (hike.heureDepart||'') : (d.hdep || DEFAULT_HEURE_DEPART);
+  document.getElementById('f_rdv').value = hike ? (hike.rdv||'') : (d.rdv||'');
+  document.getElementById('f_hrdv').value = hike ? (hike.heureRdv||'') : (d.hrdv||'');
+  document.getElementById('f_diff').value = hike ? (hike.difficulte||'') : (d.diff||'');
+  document.getElementById('f_duree').value = hike ? (hike.duree||'') : (d.duree||'');
   document.getElementById('f_km').value = hike && hike.km != null ? hike.km : '';
   document.getElementById('f_deniv').value = hike && hike.deniv != null ? hike.deniv : '';
   document.getElementById('f_arrivee').value = hike ? (hike.arrivee||'') : '';
   document.getElementById('f_boucle').checked = hike ? isBoucle(hike) : true;
   syncBoucleUI();
-  document.getElementById('f_adresse').value = hike ? (hike.departLabel||'') : '';
+  document.getElementById('f_adresse').value = hike ? (hike.departLabel||'') : (d.adresse||'');
   document.getElementById('f_desc').value = hike ? (hike.description||'') : '';
-  document.getElementById('f_raison').value = hike ? (hike.raisonAnnulation||'') : '';
-  document.getElementById('f_raison_field').style.display = (hike && hike.statut === 'annulee') ? 'block' : 'none';
+  document.getElementById('f_raison').value = (hike && !asCopy) ? (hike.raisonAnnulation||'') : '';
+  document.getElementById('f_raison_field').style.display = (hike && !asCopy && hike.statut === 'annulee') ? 'block' : 'none';
+  curGpx = (hike && hike.gpx) ? {name: hike.gpxName || 'trace.gpx', text: hike.gpx} : null;
+  document.getElementById('gpxBody').style.display = 'none';
+  document.getElementById('gpxChev').textContent = '▸';
+  refreshGpxUI();
   document.getElementById('modalBackdrop').classList.add('open');
 }
 function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
@@ -940,7 +1011,8 @@ async function saveHike(){
     boucle: document.getElementById('f_boucle').checked,
     arrivee: document.getElementById('f_boucle').checked ? '' : document.getElementById('f_arrivee').value.trim(),
     departLabel: document.getElementById('f_adresse').value.trim(),
-    description: document.getElementById('f_desc').value.trim()
+    description: document.getElementById('f_desc').value.trim(),
+    gpx: curGpx ? curGpx.text : '', gpxName: curGpx ? curGpx.name : ''
   };
   if(document.getElementById('f_raison_field').style.display !== 'none') fields.raisonAnnulation = document.getElementById('f_raison').value.trim();
   if(editingId){
@@ -995,8 +1067,21 @@ function openJoinPrompt(h){
   document.getElementById('joinCancelledNote').style.display = cancelled ? 'block' : 'none';
   document.getElementById('joinFormBody').style.display = cancelled ? 'none' : 'block';
   document.getElementById('btnJoinConfirm').disabled = cancelled;
+  document.getElementById('joinDiscBody').style.display = 'none';
+  document.getElementById('joinDiscChev').textContent = '▸';
+  document.getElementById('joinCommentAuthor').value = '';
+  document.getElementById('joinCommentText').value = '';
+  refreshJoinDiscussion(h);
   document.getElementById('joinModalBackdrop').dataset.hikeId = h.id;
   document.getElementById('joinModalBackdrop').classList.add('open');
+}
+
+function refreshJoinDiscussion(h){
+  const cs = (h && h.comments) || [];
+  document.getElementById('joinDiscLabel').textContent = 'Discussion (' + cs.length + ')';
+  document.getElementById('joinDiscList').innerHTML = cs.length === 0
+    ? '<div style="color:#8a9186;font-size:13px;padding:8px 0;">Aucun message pour le moment.</div>'
+    : cs.map(c=>`<div class="comment"><span class="who">${escapeHtml(c.author)}</span><span class="when">${new Date(c.at).toLocaleString('fr-FR')}</span><div class="txt">${escapeHtml(c.text)}</div></div>`).join('');
 }
 
 // ---------- Export / Import ----------
@@ -1034,6 +1119,7 @@ function openSettings(){
   document.getElementById('s_includeToken').checked = false;
   document.getElementById('s_link').value = '';
   document.getElementById('s_mailTpl').innerHTML = getMailTpl();
+  fillDefaultsForm();
   document.getElementById('settingsBackdrop').classList.add('open');
 }
 function closeSettings(){ document.getElementById('settingsBackdrop').classList.remove('open'); }
@@ -1054,6 +1140,15 @@ function buildShareLink(includeToken){
   return location.origin + location.pathname + '?' + params.toString();
 }
 
+const DEF_KEYS = ['orga','tel','rdv','hrdv','hdep','adresse','diff','duree'];
+function getDefaults(){ try{ return JSON.parse(localStorage.getItem(DEFAULTS_KEY) || '{}'); }catch(e){ return {}; } }
+function fillDefaultsForm(){ const d = getDefaults(); DEF_KEYS.forEach(k=> document.getElementById('d_' + k).value = d[k] || ''); }
+function saveDefaultsForm(){ const d = {}; DEF_KEYS.forEach(k=>{ d[k] = document.getElementById('d_' + k).value.trim(); }); localStorage.setItem(DEFAULTS_KEY, JSON.stringify(d)); }
+function requestSettings(){
+  if(!confirm("⚙ Les paramètres sont réservés aux administrateurs de la page.\n\nÊtes-vous administrateur et souhaitez-vous continuer ?")) return;
+  openSettings();
+}
+
 // ---------- Bindings ----------
 document.getElementById('btnAdd').onclick = ()=> openModal();
 document.getElementById('btnCancel').onclick = closeModal;
@@ -1064,13 +1159,14 @@ document.getElementById('btnImport').onclick = ()=>document.getElementById('file
 document.getElementById('fileImport').onchange = (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=''; };
 document.getElementById('chkPast').onchange = (e)=>{ showPast = e.target.checked; renderList(); };
 document.getElementById('btnRefresh').onclick = initialLoad;
-document.getElementById('btnSettings').onclick = openSettings;
-document.getElementById('btnBannerSettings').onclick = openSettings;
+document.getElementById('btnSettings').onclick = requestSettings;
+document.getElementById('btnBannerSettings').onclick = requestSettings;
 document.getElementById('btnSettingsCancel').onclick = closeSettings;
 document.querySelector('#settingsBackdrop [data-action="close-settings"]').onclick = closeSettings;
 document.getElementById('btnSettingsSave').onclick = ()=>{
   saveConfig(readSettingsForm());
   localStorage.setItem(MAIL_TPL_KEY, document.getElementById('s_mailTpl').innerHTML);
+  saveDefaultsForm();
   closeSettings();
   initialLoad();
 };
@@ -1097,13 +1193,28 @@ function tplExec(cmd, val){
 document.querySelectorAll('.rt-toolbar [data-cmd]').forEach(b=>{
   b.onmousedown = e => e.preventDefault();
   b.onclick = ()=>{
-    if(b.dataset.cmd === 'createLink'){ const u = prompt('Adresse du lien (https://…)'); if(u) tplExec('createLink', u); }
-    else tplExec(b.dataset.cmd);
+    if(b.dataset.cmd === 'createLink'){
+      const sel = tplRange ? tplRange.toString() : '';
+      const u = prompt('Adresse du lien (https://… ou {lien_inscription})', 'https://');
+      if(!u) return;
+      const txt = prompt('Texte affiché pour ce lien (ex. Inscription)', sel || 'Inscription');
+      if(!txt) return;
+      tplExec('insertHTML', '<a href="' + escapeHtml(u) + '">' + escapeHtml(txt) + '</a>');
+    } else tplExec(b.dataset.cmd);
   };
 });
 const tplSel = document.getElementById('s_tplField');
 TPL_FIELDS.forEach(([k,l]) => tplSel.insertAdjacentHTML('beforeend', `<option value="${k}">${l}</option>`));
 tplSel.onchange = ()=>{ if(tplSel.value) tplExec('insertText', '{' + tplSel.value + '}'); tplSel.value = ''; };
+document.getElementById('s_tplSize').onchange = function(){
+  const px = this.value; this.value = '';
+  if(!px) return;
+  tplExec('fontSize', '7');
+  tplEd.querySelectorAll('font[size="7"]').forEach(f=>{
+    const sp = document.createElement('span'); sp.style.fontSize = px + 'px'; sp.innerHTML = f.innerHTML; f.replaceWith(sp);
+  });
+};
+document.getElementById('s_tplColor').onchange = function(){ tplExec('foreColor', this.value); };
 document.getElementById('btnTplReset').onclick = ()=>{ if(confirm('Rétablir le modèle par défaut ?')) tplEd.innerHTML = DEFAULT_MAIL_TPL; };
 
 // Popup d'e-mail
@@ -1136,6 +1247,91 @@ document.getElementById('btnJoinConfirm').onclick = async ()=>{
   await syncMutate(s=>addParticipant(s, hikeId, person), `Inscription (lien) de ${prenom} ${nom}`);
   document.getElementById('joinModalBackdrop').classList.remove('open');
   openDetail(hikeId, true);
+};
+
+// Trace GPX
+function parseGpxPoints(text){
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if(doc.querySelector('parsererror')) return null;
+  let nodes = doc.getElementsByTagName('trkpt');
+  if(!nodes.length) nodes = doc.getElementsByTagName('rtept');
+  const pts = [];
+  for(const n of nodes){
+    const la = parseFloat(n.getAttribute('lat')), lo = parseFloat(n.getAttribute('lon'));
+    if(!isNaN(la) && !isNaN(lo)) pts.push([la, lo]);
+  }
+  return pts;
+}
+function drawGpx(){
+  const mapEl = document.getElementById('gpxMap');
+  if(typeof L === 'undefined'){ mapEl.innerHTML = '<p class="hint" style="padding:10px;">Carte indisponible (Leaflet non chargé — vérifiez la connexion).</p>'; return; }
+  if(!gpxMap){
+    gpxMap = L.map(mapEl).setView([46.6, 2.5], 5);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© les contributeurs d’OpenStreetMap'}).addTo(gpxMap);
+  }
+  gpxMap.invalidateSize();
+  if(gpxLayer){ gpxLayer.remove(); gpxLayer = null; }
+  const pts = curGpx ? parseGpxPoints(curGpx.text) : null;
+  if(pts && pts.length){
+    gpxLayer = L.featureGroup([
+      L.polyline(pts, {color: '#a15c3e', weight: 4}),
+      L.circleMarker(pts[0], {radius: 6, color: '#3c6e4a', fillOpacity: 1}),
+      L.circleMarker(pts[pts.length-1], {radius: 6, color: '#8f3b2a', fillOpacity: 1})
+    ]).addTo(gpxMap);
+    gpxMap.fitBounds(gpxLayer.getBounds(), {padding: [20, 20]});
+  }
+}
+function refreshGpxUI(){
+  const pts = curGpx ? parseGpxPoints(curGpx.text) : null;
+  document.getElementById('gpxInfo').textContent = curGpx ? curGpx.name + ' — ' + (pts ? pts.length : 0) + ' points' : 'Aucune trace GPX pour cette rando.';
+  document.getElementById('btnGpxDownload').disabled = !curGpx;
+  document.getElementById('btnGpxRemove').disabled = !curGpx;
+  if(document.getElementById('gpxBody').style.display !== 'none') drawGpx();
+}
+document.getElementById('gpxToggle').onclick = ()=>{
+  const body = document.getElementById('gpxBody');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  document.getElementById('gpxChev').textContent = open ? '▾' : '▸';
+  if(open) drawGpx();
+};
+document.getElementById('btnGpxImport').onclick = ()=> document.getElementById('fileGpx').click();
+document.getElementById('fileGpx').onchange = e=>{
+  const f = e.target.files[0]; e.target.value = '';
+  if(!f) return;
+  if(f.size > 300 * 1024){ alert('Fichier trop volumineux (max 300 Ko) : il est stocké dans le fichier JSON partagé. Simplifiez la trace avant de l’importer.'); return; }
+  const r = new FileReader();
+  r.onload = ()=>{
+    const pts = parseGpxPoints(r.result);
+    if(!pts || !pts.length){ alert('Ce fichier GPX ne contient aucune trace exploitable.'); return; }
+    curGpx = {name: f.name, text: r.result};
+    refreshGpxUI();
+  };
+  r.readAsText(f);
+};
+document.getElementById('btnGpxDownload').onclick = ()=>{
+  if(!curGpx) return;
+  const url = URL.createObjectURL(new Blob([curGpx.text], {type: 'application/gpx+xml'}));
+  const a = document.createElement('a'); a.href = url; a.download = curGpx.name || 'trace.gpx'; a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('btnGpxRemove').onclick = ()=>{ if(curGpx && confirm('Retirer la trace GPX de cette rando ?')){ curGpx = null; refreshGpxUI(); } };
+
+// Discussion dans la popup d'inscription
+document.getElementById('joinDiscToggle').onclick = ()=>{
+  const body = document.getElementById('joinDiscBody');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  document.getElementById('joinDiscChev').textContent = open ? '▾' : '▸';
+};
+document.getElementById('btnJoinComment').onclick = async ()=>{
+  const hikeId = document.getElementById('joinModalBackdrop').dataset.hikeId;
+  const author = document.getElementById('joinCommentAuthor').value.trim();
+  const text = document.getElementById('joinCommentText').value.trim();
+  if(!author || !text) return;
+  await syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===hikeId); if(hh){ hh.comments=hh.comments||[]; hh.comments.push({author, text, at: new Date().toISOString()}); } return s; }, `Commentaire de ${author}`);
+  document.getElementById('joinCommentText').value = '';
+  refreshJoinDiscussion((state.hikes||[]).find(x=>x.id===hikeId));
 };
 
 // Fermeture au clic extérieur (sauf inscription et e-mail)
