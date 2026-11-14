@@ -169,6 +169,8 @@
   .rt-toolbar input[type=color]{width:34px;height:26px;padding:1px;border:1.5px solid var(--line);cursor:pointer;}
   button.icon-btn{font-size:17px;padding:5px 10px;line-height:1;}
   .leaflet-container{font-family:inherit;}
+  .map-fs-btn{font-size:18px !important;cursor:pointer;}
+  .map-full{position:fixed !important;inset:0;width:100% !important;height:100% !important;margin:0 !important;border:none !important;z-index:30000;}
   @media (max-width:600px){ header.top .brand{font-size:27px;} }
   .signup-box{border:2px solid var(--clay);background:#fbf3ee;padding:14px 16px;margin-top:18px;}
   button.cta{background:var(--clay);border-color:var(--clay);font-size:16px;font-weight:600;padding:12px 26px;margin-top:4px;}
@@ -220,6 +222,8 @@
 
   <section id="viewStats" style="display:none;">
     <div class="stat-row" id="statsSummary"></div>
+    <div class="section-title">Moyennes par rando</div>
+    <div class="stat-row" id="statsAvg"></div>
     <div class="section-title">Randos par mois</div>
     <div id="statsMonthly"></div>
     <div class="grid2" style="margin-top:18px;">
@@ -229,7 +233,7 @@
   </section>
 </main>
 
-<footer><span style="opacity:.6;">v2026.11.14-b</span></footer>
+<footer><span style="opacity:.6;">v2026.11.14-c</span></footer>
 
 <!-- Popup détail d'une rando -->
 <div class="modal-backdrop" id="detailBackdrop">
@@ -312,7 +316,7 @@
 
     <hr class="sep">
     <h3 style="font-size:16px;">Valeurs par défaut d'une nouvelle rando</h3>
-    <p class="lead">Ces valeurs pré-remplissent le formulaire de création (elles restent modifiables). Enregistrées dans ce navigateur, avec le bouton « Enregistrer les paramètres ».</p>
+    <p class="lead">Ces valeurs pré-remplissent le formulaire de création (elles restent modifiables). Elles sont partagées avec tous les utilisateurs (enregistrées dans le fichier JSON, jeton requis) via le bouton « Enregistrer les paramètres ».</p>
     <div class="grid2">
       <div class="field"><label>Organisateur·rice</label><input id="d_orga"></div>
       <div class="field"><label>Téléphone</label><input type="tel" id="d_tel"></div>
@@ -332,7 +336,7 @@
 
     <hr class="sep">
     <h3 style="font-size:16px;">Modèle du texte d'e-mail (organisateur)</h3>
-    <p class="lead">Mise en forme libre. Le menu « Insérer un champ » ajoute des champs de la rando, remplacés automatiquement à la génération.</p>
+    <p class="lead">Mise en forme libre. Le menu « Insérer un champ » ajoute des champs de la rando, remplacés automatiquement à la génération. Le modèle est partagé (enregistré dans le fichier JSON avec les valeurs par défaut).</p>
     <div class="rt-toolbar">
       <button class="subtle" type="button" data-cmd="bold"><b>G</b></button>
       <button class="subtle" type="button" data-cmd="italic"><i>I</i></button>
@@ -617,7 +621,7 @@ function meetOptionLabels(h){
     dep: 'Lieu de départ' + (h.heureDepart ? ' (' + h.heureDepart + ')' : '') + (h.departLabel ? ' : ' + h.departLabel : '')
   };
 }
-function getMailTpl(){ return localStorage.getItem(MAIL_TPL_KEY) || DEFAULT_MAIL_TPL; }
+function getMailTpl(){ return (state.settings && state.settings.mailTpl) || localStorage.getItem(MAIL_TPL_KEY) || DEFAULT_MAIL_TPL; }
 function fillMailTpl(h){
   const e = escapeHtml;
   const vals = {
@@ -745,6 +749,13 @@ function renderStats(){
     <div class="stat"><b>${totalKm.toFixed(0)} km</b>distance cumulée</div>
     <div class="stat"><b>${totalDeniv} m</b>dénivelé cumulé</div>
   `;
+  const avg = (n, d, dec)=> d ? (n / d).toFixed(dec).replace('.', ',') : '—';
+  const nKm = hikes.filter(h=>h.km).length, nDen = hikes.filter(h=>h.deniv).length;
+  document.getElementById('statsAvg').innerHTML = `
+    <div class="stat"><b>${avg(totalKm, nKm, 1)} km</b>distance moyenne</div>
+    <div class="stat"><b>${avg(totalDeniv, nDen, 0)} m</b>dénivelé moyen</div>
+    <div class="stat"><b>${avg(totalInscr, hikes.length, 1)}</b>participants par rando</div>
+  `;
   const byMonth = {};
   hikes.forEach(h=>{ if(h.date){ const key = h.date.slice(0,7); byMonth[key] = (byMonth[key]||0) + 1; } });
   const monthKeys = Object.keys(byMonth).sort();
@@ -846,7 +857,7 @@ function renderDetail(){
     ${hikeDescHtml(h)}
     <button class="collapse-btn" data-action="toggle-gpx" type="button"><span id="gChev">${detailGpxOpen ? '▾' : '▸'}</span> Carte et trace GPX</button>
     <div id="gpxDetailBody" style="display:${detailGpxOpen ? 'block' : 'none'};">${h.gpx
-      ? '<div class="action-row" style="margin-top:0;"><button class="subtle" data-action="gpx-download" type="button">⬇ Télécharger le fichier .gpx</button></div><div id="detailMap" style="height:300px;margin:10px 0;border:1.5px solid var(--line);"></div>'
+      ? '<div class="action-row" style="margin-top:0;"><button class="subtle" data-action="gpx-download" type="button">⬇ Télécharger le fichier .gpx</button></div><div class="hint">📄 ' + escapeHtml(h.gpxName || 'trace.gpx') + '</div><div id="detailMap" style="height:300px;margin:10px 0;border:1.5px solid var(--line);"></div>'
       : '<p class="hint">Aucune trace GPX pour cette rando.</p>'}</div>
     <button class="collapse-btn" data-action="toggle-participants" type="button"><span id="pChev">${participantsOpen ? '▾' : '▸'}</span> Participants (${parts.length})</button>
     <div id="participantsBody" style="display:${participantsOpen ? 'block' : 'none'};">${tableHtml}</div>
@@ -1163,9 +1174,9 @@ function buildShareLink(includeToken){
 }
 
 const DEF_KEYS = ['orga','tel','rdv','hrdv','hdep','adresse','diff','duree'];
-function getDefaults(){ try{ return JSON.parse(localStorage.getItem(DEFAULTS_KEY) || '{}'); }catch(e){ return {}; } }
+function getDefaults(){ if(state.settings && state.settings.defaults) return state.settings.defaults; try{ return JSON.parse(localStorage.getItem(DEFAULTS_KEY) || '{}'); }catch(e){ return {}; } }
 function fillDefaultsForm(){ const d = getDefaults(); DEF_KEYS.forEach(k=> document.getElementById('d_' + k).value = d[k] || ''); }
-function saveDefaultsForm(){ const d = {}; DEF_KEYS.forEach(k=>{ d[k] = document.getElementById('d_' + k).value.trim(); }); localStorage.setItem(DEFAULTS_KEY, JSON.stringify(d)); }
+function readDefaultsForm(){ const d = {}; DEF_KEYS.forEach(k=>{ d[k] = document.getElementById('d_' + k).value.trim(); }); return d; }
 function requestSettings(){
   if(!confirm("⚙ Les paramètres sont réservés aux administrateurs de la page.\n\nÊtes-vous administrateur et souhaitez-vous continuer ?")) return;
   openSettings();
@@ -1185,12 +1196,17 @@ document.getElementById('btnSettings').onclick = requestSettings;
 document.getElementById('btnBannerSettings').onclick = requestSettings;
 document.getElementById('btnSettingsCancel').onclick = closeSettings;
 document.querySelector('#settingsBackdrop [data-action="close-settings"]').onclick = closeSettings;
-document.getElementById('btnSettingsSave').onclick = ()=>{
+document.getElementById('btnSettingsSave').onclick = async ()=>{
   saveConfig(readSettingsForm());
-  localStorage.setItem(MAIL_TPL_KEY, document.getElementById('s_mailTpl').innerHTML);
-  saveDefaultsForm();
+  const tpl = document.getElementById('s_mailTpl').innerHTML;
+  const newSettings = {defaults: readDefaultsForm(), mailTpl: tpl === DEFAULT_MAIL_TPL ? '' : tpl};
+  localStorage.removeItem(MAIL_TPL_KEY); localStorage.removeItem(DEFAULTS_KEY);
   closeSettings();
-  initialLoad();
+  await initialLoad();
+  const isEmpty = !newSettings.mailTpl && Object.values(newSettings.defaults).every(v=>!v);
+  if(isEmpty && !state.settings) return;
+  if(JSON.stringify(state.settings || {}) !== JSON.stringify(newSettings))
+    await syncMutate(s=>{ s.settings = newSettings; return s; }, 'Mise à jour des paramètres partagés');
 };
 document.getElementById('btnGenLink').onclick = ()=>{
   saveConfig(readSettingsForm());
@@ -1284,12 +1300,37 @@ function parseGpxPoints(text){
   }
   return pts;
 }
+function addFullscreenControl(map, el){
+  let btn;
+  const setFull = on=>{
+    el.classList.toggle('map-full', on);
+    if(btn){ btn.textContent = on ? '✕' : '⛶'; btn.title = on ? 'Quitter le plein écran' : 'Plein écran'; }
+    if(on && el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+    if(!on && document.fullscreenElement === el && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    setTimeout(()=>map.invalidateSize(), 150);
+  };
+  const Ctl = L.Control.extend({onAdd(){
+    const box = L.DomUtil.create('div', 'leaflet-bar');
+    btn = L.DomUtil.create('a', 'map-fs-btn', box);
+    btn.href = '#'; btn.title = 'Plein écran'; btn.setAttribute('role', 'button'); btn.textContent = '⛶';
+    L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.on(btn, 'click', e=>{ L.DomEvent.preventDefault(e); setFull(!el.classList.contains('map-full')); });
+    return box;
+  }});
+  new Ctl({position: 'topleft'}).addTo(map);
+  const onFsChange = ()=>{ if(!document.fullscreenElement && el.classList.contains('map-full')) setFull(false); };
+  const onKey = e=>{ if(e.key === 'Escape' && el.classList.contains('map-full')) setFull(false); };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('keydown', onKey);
+  map.on('unload', ()=>{ document.removeEventListener('fullscreenchange', onFsChange); document.removeEventListener('keydown', onKey); });
+}
 function newTrackMap(el){
   const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {maxZoom: 17, attribution: 'Carte © OpenTopoMap (CC-BY-SA), données © contributeurs OpenStreetMap'});
   const ign = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png', {maxZoom: 18, attribution: '© IGN – Géoplateforme'});
   const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© contributeurs OpenStreetMap'});
   const m = L.map(el, {layers: [topo]}).setView([46.6, 2.5], 5);
   L.control.layers({'Topo': topo, 'Plan IGN': ign, 'OpenStreetMap': osm}).addTo(m);
+  addFullscreenControl(m, el);
   return m;
 }
 function trackLayer(pts){
