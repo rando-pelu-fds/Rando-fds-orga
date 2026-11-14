@@ -1,7 +1,6 @@
 # Rando-fds-orga
 Dossier contenant le fichier public html mais pas les données 
 https://rando-pelu-fds.github.io/Rando-fds-orga/
-
 # Fil des Saisons - Randos
 
 Carnet de randonnées partagé pour un groupe : proposer des randos, s'inscrire, discuter, consulter le calendrier et les traces GPX, le tout dans **un seul fichier HTML** hébergé gratuitement sur GitHub Pages.
@@ -83,9 +82,9 @@ Dans **⚙ → Lien à partager au groupe**, cliquer sur **Générer et copier l
 
 - **Calendrier** (affiché par défaut) : navigation de mois en mois. Cliquer sur une rando ouvre sa fiche.
 - **Liste** : randos à venir, avec une case pour afficher les randos passées.
-- **Statistiques** : nombre de randos, distance et dénivelé cumulés, nombre de participants différents et d'inscriptions, randos par mois, organisateurs et participants les plus actifs.
+- **Statistiques** : nombre de randos, distance et dénivelé cumulés, nombre de participants différents et d'inscriptions, moyennes par rando (distance, dénivelé, participants), randos par mois, organisateurs et participants les plus actifs.
 - **Fiche d'une rando** : toutes les infos (date, heures et lieux de RdV et de départ de marche, parcours, distance, dénivelé, durée, difficulté, téléphone de l'organisateur cliquable sur mobile).
-  - **Carte et trace GPX** (section repliable) : carte topographique par défaut, avec choix du Plan IGN ou d'OpenStreetMap, et téléchargement du fichier `.gpx`.
+  - **Carte et trace GPX** (section repliable) : carte topographique par défaut, avec choix du Plan IGN ou d'OpenStreetMap, et téléchargement du fichier `.gpx` (nom du fichier affiché) et bouton plein écran sur la carte (⛶, retour avec ✕ ou Échap).
   - **Participants** : liste des inscrits (section repliable).
   - **S'inscrire** : prénom, NOM, et lieu de rencontre (point de RdV ou lieu de départ, avec les heures).
   - **Discussion** : messages du groupe (section repliable, avec le nombre de messages).
@@ -116,8 +115,8 @@ Via la roue crantée **⚙** :
 
 - **Dépôt GitHub et jeton.**
 - **Lien à partager au groupe.**
-- **Valeurs par défaut d'une nouvelle rando** : organisateur, téléphone, lieu et heure de RdV, lieu et heure de départ de marche, difficulté, durée. Elles préremplissent la création, mais restent modifiables.
-- **Modèle du texte d'e-mail** : éditeur avec gras, italique, souligné, liste, taille, couleur et liens avec texte personnalisé. Le menu « Insérer un champ » ajoute des champs remplacés automatiquement (`{titre}`, `{date}`, `{heure_rdv}`, `{rdv}`, `{heure_depart}`, `{depart}`, `{parcours}`, `{orga}`, `{tel}`, `{km}`, `{deniv}`, `{duree}`, `{difficulte}`, `{description}`, `{participants}`, `{lien_inscription}`).
+- **Valeurs par défaut d'une nouvelle rando** (partagées avec tous, enregistrées dans `randos.json`) : organisateur, téléphone, lieu et heure de RdV, lieu et heure de départ de marche, difficulté, durée. Elles préremplissent la création, mais restent modifiables.
+- **Modèle du texte d'e-mail** (partagé, enregistré dans `randos.json`) : éditeur avec gras, italique, souligné, liste, taille, couleur et liens avec texte personnalisé. Le menu « Insérer un champ » ajoute des champs remplacés automatiquement (`{titre}`, `{date}`, `{heure_rdv}`, `{rdv}`, `{heure_depart}`, `{depart}`, `{parcours}`, `{orga}`, `{tel}`, `{km}`, `{deniv}`, `{duree}`, `{difficulte}`, `{description}`, `{participants}`, `{lien_inscription}`).
   Pour afficher « Inscription » au lieu d'une longue adresse, utiliser le bouton **🔗 Lien**, saisir `{lien_inscription}` comme adresse, puis « Inscription » comme texte affiché.
 - **Données** : actualiser depuis GitHub, exporter et importer un fichier JSON (sauvegarde).
 
@@ -132,7 +131,8 @@ Quand vous recevez une nouvelle version de `index.html`, **il suffit de remplace
 ### Ce qui est conservé
 
 - Toutes les randos, inscriptions et messages (`randos.json`).
-- Les paramètres de chaque navigateur (dépôt, jeton, modèle d'e-mail, valeurs par défaut), tant que l'adresse du site ne change pas.
+- Les paramètres de chaque navigateur (dépôt et jeton), tant que l'adresse du site ne change pas.
+- Les valeurs par défaut et le modèle d'e-mail, partagés dans `randos.json`.
 
 ### Méthode A : depuis le site GitHub (la plus simple)
 
@@ -160,7 +160,7 @@ git push
 ### Vérifier que la mise à jour est bien en ligne
 
 1. Ouvrir le site et forcer le rechargement : `Ctrl+Shift+R` (Windows/Linux), `Cmd+Shift+R` (Mac). Sur mobile : vider le cache du navigateur ou ouvrir le site en navigation privée.
-2. Vérifier le **numéro de version** en bas de page (par exemple `v2026.11.14-b`). Il change à chaque nouvelle version.
+2. Vérifier le **numéro de version** en bas de page (par exemple `v2026.11.14-c`). Il change à chaque nouvelle version.
 
 ### En cas de problème après une mise à jour
 
@@ -184,7 +184,7 @@ git push
 - **Écritures simultanées** : si deux personnes s'inscrivent exactement au même moment, la seconde publication peut échouer (message d'erreur dans le voyant d'état). Il suffit de réessayer.
 - **Quota GitHub** : sans jeton, l'API est limitée à 60 requêtes par heure et par adresse IP. L'application se rafraîchit toutes les minutes, ce qui peut atteindre cette limite. Avec un jeton, la limite est bien plus haute.
 - **Taille des données** : les traces GPX sont stockées dans `randos.json` (300 Ko maximum par trace). Un fichier JSON dépassant environ 1 Mo ne peut plus être lu par l'application. Évitez d'importer beaucoup de traces lourdes et supprimez celles des randos anciennes si besoin.
-- **Paramètres propres à chaque navigateur** : le dépôt configuré, le jeton, le modèle d'e-mail et les valeurs par défaut ne sont pas partagés entre appareils ou entre organisateurs.
+- **Paramètres propres à chaque navigateur** : le dépôt configuré et le jeton ne sont pas partagés entre appareils. Les valeurs par défaut et le modèle d'e-mail, eux, sont partagés (stockés dans `randos.json`) ; les enregistrer demande un jeton.
 - **Inscription sans jeton** : un participant qui ouvre le site sans jeton (ni lien contenant le jeton) ne peut pas enregistrer son inscription sur GitHub.
 
 ---
