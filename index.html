@@ -233,7 +233,7 @@
   </section>
 </main>
 
-<footer><span style="opacity:.6;">v2026.11.14-c</span></footer>
+<footer><span style="opacity:.6;">v2026.11.14-d</span></footer>
 
 <!-- Popup détail d'une rando -->
 <div class="modal-backdrop" id="detailBackdrop">
@@ -249,6 +249,15 @@
     <h2 id="joinHikeTitle" style="margin:0 0 4px;font-size:26px;line-height:1.2;color:var(--pine-dark);"></h2>
     <div id="joinHikeInfo"></div>
     <div id="joinHikeDesc"></div>
+    <button class="collapse-btn" id="joinGpxToggle" type="button"><span id="joinGpxChev">▸</span> Carte et trace GPX</button>
+    <div id="joinGpxBody" style="display:none;">
+      <p class="hint" id="joinGpxNone">Aucune trace GPX pour cette rando.</p>
+      <div id="joinGpxWrap">
+        <div class="action-row" style="margin-top:0;"><button class="subtle" id="btnJoinGpxDl" type="button">⬇ Télécharger le fichier .gpx</button></div>
+        <div class="hint" id="joinGpxName"></div>
+        <div id="joinMap" style="height:280px;margin:10px 0;border:1.5px solid var(--line);"></div>
+      </div>
+    </div>
     <button class="collapse-btn" id="joinPartToggle" type="button"><span id="joinPartChev">▸</span> <span id="joinPartLabel">Participants</span></button>
     <div id="joinPartBody" style="display:none;"></div>
     <div id="joinCancelledNote" class="warn-box" style="display:none;"><b>Rando annulée</b>Les inscriptions sont fermées pour cette rando.</div>
@@ -447,7 +456,7 @@ let pendingJoin = null;
 let activeTab = 'calendar';
 let adminOpen = false;
 let discussionOpen = false;
-let curGpx = null, gpxMap = null, gpxLayer = null, detailMap = null, detailGpxOpen = false;
+let curGpx = null, gpxMap = null, gpxLayer = null, detailMap = null, detailGpxOpen = false, joinMap = null, joinHike = null;
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 
@@ -1100,6 +1109,13 @@ function openJoinPrompt(h){
   document.getElementById('joinCancelledNote').style.display = cancelled ? 'block' : 'none';
   document.getElementById('joinFormBody').style.display = cancelled ? 'none' : 'block';
   document.getElementById('btnJoinConfirm').disabled = cancelled;
+  if(joinMap){ joinMap.remove(); joinMap = null; }
+  joinHike = h;
+  document.getElementById('joinGpxBody').style.display = 'none';
+  document.getElementById('joinGpxChev').textContent = '▸';
+  document.getElementById('joinGpxNone').style.display = h.gpx ? 'none' : 'block';
+  document.getElementById('joinGpxWrap').style.display = h.gpx ? 'block' : 'none';
+  document.getElementById('joinGpxName').textContent = h.gpx ? '📄 ' + (h.gpxName || 'trace.gpx') : '';
   document.getElementById('joinDiscBody').style.display = 'none';
   document.getElementById('joinDiscChev').textContent = '▸';
   document.getElementById('joinCommentAuthor').value = '';
@@ -1398,6 +1414,25 @@ document.getElementById('btnGpxDownload').onclick = ()=>{
   downloadGpx(curGpx.name, curGpx.text);
 };
 document.getElementById('btnGpxRemove').onclick = ()=>{ if(curGpx && confirm('Retirer la trace GPX de cette rando ?')){ curGpx = null; refreshGpxUI(); } };
+
+// Carte GPX dans la popup d'inscription
+function drawJoinMap(){
+  const el = document.getElementById('joinMap');
+  if(!joinHike || !joinHike.gpx) return;
+  if(typeof L === 'undefined'){ el.innerHTML = '<p class="hint" style="padding:10px;">Carte indisponible (Leaflet non chargé — vérifiez la connexion).</p>'; return; }
+  if(joinMap){ joinMap.invalidateSize(); return; }
+  joinMap = newTrackMap(el);
+  const pts = parseGpxPoints(joinHike.gpx);
+  if(pts && pts.length){ const g = trackLayer(pts).addTo(joinMap); joinMap.fitBounds(g.getBounds(), {padding: [20, 20]}); }
+}
+document.getElementById('joinGpxToggle').onclick = ()=>{
+  const body = document.getElementById('joinGpxBody');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  document.getElementById('joinGpxChev').textContent = open ? '▾' : '▸';
+  if(open) drawJoinMap();
+};
+document.getElementById('btnJoinGpxDl').onclick = ()=>{ if(joinHike && joinHike.gpx) downloadGpx(joinHike.gpxName, joinHike.gpx); };
 
 // Discussion dans la popup d'inscription
 document.getElementById('joinDiscToggle').onclick = ()=>{
