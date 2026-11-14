@@ -14,7 +14,6 @@
     --ok:#3c6e4a; --err:#9a3a2a;
   }
   *{box-sizing:border-box;}
-  html,body{height:100%;}
   body{
     margin:0; background:var(--paper);
     background-image:
@@ -43,8 +42,8 @@
   button:hover{background:var(--pine-dark);}
   button:disabled{opacity:.5;cursor:not-allowed;}
   .banner{margin:14px 20px 0;padding:12px 16px;border:1.5px dashed var(--clay);background:#fbf3ee;font-size:13.5px;color:var(--pine-dark);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
-  main{padding:18px 20px 60px;max-width:780px;margin:0 auto;}
-  footer{padding:20px 20px 40px;font-size:12.5px;color:#8a9186;border-top:1px solid var(--line);max-width:780px;margin:0 auto;}
+  main{padding:18px 20px 8px;max-width:780px;margin:0 auto;}
+  footer{padding:6px 20px 10px;font-size:12.5px;color:#8a9186;border-top:1px solid var(--line);max-width:780px;margin:0 auto;}
 
   /* Onglets */
   .tabs{display:flex;gap:0;border-bottom:2px solid var(--pine);margin-bottom:16px;flex-wrap:wrap;}
@@ -170,7 +169,13 @@
   button.icon-btn{font-size:17px;padding:5px 10px;line-height:1;}
   .leaflet-container{font-family:inherit;}
   .map-fs-btn{font-size:18px !important;cursor:pointer;}
-  .map-full{position:fixed !important;inset:0;width:100% !important;height:100% !important;margin:0 !important;border:none !important;z-index:30000;}
+  .map-full{position:fixed !important;top:var(--view-top,0px) !important;left:0 !important;width:100% !important;height:var(--view-h,100%) !important;margin:0 !important;border:none !important;z-index:30000;}
+  html.embedded-auto{overflow:hidden;}
+  .modal-backdrop{padding-top:calc(36px + var(--view-top,0px));}
+  @media (max-width:600px){ .modal-backdrop{padding-top:calc(14px + var(--view-top,0px));} }
+  .c-actions{margin-top:2px;}
+  .c-actions button{border:none;background:none;color:var(--clay);font-size:12px;padding:0 12px 0 0;}
+  .c-actions button:hover{background:none;text-decoration:underline;}
   @media (max-width:600px){ header.top .brand{font-size:27px;} }
   .signup-box{border:2px solid var(--clay);background:#fbf3ee;padding:14px 16px;margin-top:18px;}
   button.cta{background:var(--clay);border-color:var(--clay);font-size:16px;font-weight:600;padding:12px 26px;margin-top:4px;}
@@ -233,7 +238,7 @@
   </section>
 </main>
 
-<footer><span style="opacity:.6;">v2026.11.14-d</span></footer>
+<footer><span style="opacity:.6;">v2026.11.14-e</span></footer>
 
 <!-- Popup détail d'une rando -->
 <div class="modal-backdrop" id="detailBackdrop">
@@ -805,6 +810,30 @@ function bindExclusive(idA, idB){
   a.onchange = ()=>{ if(a.checked) b.checked = false; else a.checked = true; };
   b.onchange = ()=>{ if(b.checked) a.checked = false; else b.checked = true; };
 }
+function commentItemHtml(c){
+  const at = escapeHtml(c.at);
+  return `<div class="comment"><span class="who">${escapeHtml(c.author)}</span><span class="when">${new Date(c.at).toLocaleString('fr-FR')}${c.edited ? ' · modifié' : ''}</span><div class="txt">${escapeHtml(c.text)}</div><div class="c-actions"><button type="button" data-cact="edit" data-at="${at}">Modifier</button><button type="button" data-cact="del" data-at="${at}">Supprimer</button></div></div>`;
+}
+function bindCommentActions(root, hikeId, afterFn){
+  root.querySelectorAll('[data-cact]').forEach(b=>{
+    b.onclick = async ()=>{
+      const at = b.dataset.at;
+      const hk = (state.hikes||[]).find(x=>x.id===hikeId);
+      const c = hk && (hk.comments||[]).find(x=>x.at===at);
+      if(!c) return;
+      if(b.dataset.cact === 'edit'){
+        const t = prompt('Modifier le message de ' + c.author + ' :', c.text);
+        if(t === null || !t.trim()) return;
+        const text = t.trim();
+        await syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===hikeId); const cc=hh && (hh.comments||[]).find(x=>x.at===at); if(cc){ cc.text = text; cc.edited = true; } return s; }, 'Modification d’un message');
+      } else {
+        if(!confirm('Supprimer ce message de ' + c.author + ' ?')) return;
+        await syncMutate(s=>{ const hh=(s.hikes||[]).find(x=>x.id===hikeId); if(hh) hh.comments = (hh.comments||[]).filter(x=>x.at!==at); return s; }, 'Suppression d’un message');
+      }
+      if(afterFn) afterFn();
+    };
+  });
+}
 function hikeDescHtml(h){ return h.description ? '<div class="desc">' + escapeHtml(h.description) + '</div>' : ''; }
 
 function openDetail(id, expand){
@@ -837,7 +866,7 @@ function renderDetail(){
   const comments = h.comments || [];
   const commentsHtml = comments.length === 0
     ? '<div style="color:#8a9186;font-size:13px;padding:8px 0;">Aucun message pour le moment.</div>'
-    : comments.map(c=>`<div class="comment"><span class="who">${escapeHtml(c.author)}</span><span class="when">${new Date(c.at).toLocaleString('fr-FR')}</span><div class="txt">${escapeHtml(c.text)}</div></div>`).join('');
+    : comments.map(commentItemHtml).join('');
 
   const ml = meetOptionLabels(h);
   const signupHtml = cancelled
@@ -915,6 +944,7 @@ function renderDetail(){
     document.getElementById('participantsBody').style.display = participantsOpen ? 'block' : 'none';
     document.getElementById('pChev').textContent = participantsOpen ? '▾' : '▸';
   };
+  bindCommentActions(c, h.id);
   c.querySelector('[data-action="toggle-gpx"]').onclick = ()=>{
     detailGpxOpen = !detailGpxOpen;
     document.getElementById('gpxDetailBody').style.display = detailGpxOpen ? 'block' : 'none';
@@ -1128,9 +1158,11 @@ function openJoinPrompt(h){
 function refreshJoinDiscussion(h){
   const cs = (h && h.comments) || [];
   document.getElementById('joinDiscLabel').textContent = 'Discussion (' + cs.length + ')';
-  document.getElementById('joinDiscList').innerHTML = cs.length === 0
+  const list = document.getElementById('joinDiscList');
+  list.innerHTML = cs.length === 0
     ? '<div style="color:#8a9186;font-size:13px;padding:8px 0;">Aucun message pour le moment.</div>'
-    : cs.map(c=>`<div class="comment"><span class="who">${escapeHtml(c.author)}</span><span class="when">${new Date(c.at).toLocaleString('fr-FR')}</span><div class="txt">${escapeHtml(c.text)}</div></div>`).join('');
+    : cs.map(commentItemHtml).join('');
+  if(h) bindCommentActions(list, h.id, ()=> refreshJoinDiscussion((state.hikes||[]).find(x=>x.id===h.id)));
 }
 
 // ---------- Export / Import ----------
@@ -1480,6 +1512,34 @@ setInterval(()=>{
   const justWrote = (Date.now() - lastWriteAt) < 20000;
   if(!anyOpen && !justWrote) initialLoad();
 }, 60000);
+
+// ---------- Intégration en iframe (hauteur automatique, sans ascenseur) ----------
+(function(){
+  if(window.parent === window) return;
+  function measure(){
+    let h = Math.ceil(document.body.getBoundingClientRect().height);
+    document.querySelectorAll('.modal-backdrop.open').forEach(bd=>{
+      const m = bd.querySelector('.modal');
+      if(m) h = Math.max(h, Math.ceil(m.getBoundingClientRect().bottom + bd.scrollTop + 36));
+    });
+    try{ parent.postMessage({type: 'sentiers-height', height: h}, '*'); }catch(e){}
+  }
+  const ro = new ResizeObserver(measure);
+  ro.observe(document.body);
+  document.querySelectorAll('.modal').forEach(m=>ro.observe(m));
+  new MutationObserver(measure).observe(document.body, {subtree: true, attributes: true, attributeFilter: ['class']});
+  window.addEventListener('load', measure);
+  window.addEventListener('message', e=>{
+    const d = e.data;
+    if(!d || d.type !== 'sentiers-view') return;
+    const root = document.documentElement;
+    root.classList.add('embedded-auto');
+    root.style.setProperty('--view-top', (Number(d.top) || 0) + 'px');
+    root.style.setProperty('--view-h', (Number(d.height) || 0) + 'px');
+    measure();
+  });
+  measure();
+})();
 </script>
 </body>
 </html>
