@@ -18,6 +18,7 @@ Les données (randos, inscrits, messages) sont stockées dans un fichier `randos
 5. [Sécurité et bonnes pratiques](#5-sécurité-et-bonnes-pratiques)
 6. [Limites connues](#6-limites-connues)
 7. [Dépannage](#7-dépannage)
+8. [Intégrer l'application dans un autre site (iframe)](#8-intégrer-lapplication-dans-un-autre-site-iframe)
 
 ---
 
@@ -87,8 +88,8 @@ Dans **⚙ → Lien à partager au groupe**, cliquer sur **Générer et copier l
   - **Carte et trace GPX** (section repliable) : carte topographique par défaut, avec choix du Plan IGN ou d'OpenStreetMap, et téléchargement du fichier `.gpx` (nom du fichier affiché) et bouton plein écran sur la carte (⛶, retour avec ✕ ou Échap).
   - **Participants** : liste des inscrits (section repliable).
   - **S'inscrire** : prénom, NOM, et lieu de rencontre (point de RdV ou lieu de départ, avec les heures).
-  - **Discussion** : messages du groupe (section repliable, avec le nombre de messages).
-- **Lien d'inscription** reçu par e-mail : ouvre directement une fenêtre d'inscription à la rando concernée, avec la discussion et un bouton **Calendrier Rando**.
+  - **Discussion** : messages du groupe (section repliable, avec le nombre de messages). Chaque message peut être modifié ou supprimé.
+- **Lien d'inscription** reçu par e-mail : ouvre directement une fenêtre d'inscription à la rando concernée, avec la carte et la trace GPX, la discussion et un bouton **Calendrier Rando**.
 
 ### Pour proposer une rando
 
@@ -160,7 +161,7 @@ git push
 ### Vérifier que la mise à jour est bien en ligne
 
 1. Ouvrir le site et forcer le rechargement : `Ctrl+Shift+R` (Windows/Linux), `Cmd+Shift+R` (Mac). Sur mobile : vider le cache du navigateur ou ouvrir le site en navigation privée.
-2. Vérifier le **numéro de version** en bas de page (par exemple `v2026.11.14-c`). Il change à chaque nouvelle version.
+2. Vérifier le **numéro de version** en bas de page (par exemple `v2026.11.14-e`). Il change à chaque nouvelle version.
 
 ### En cas de problème après une mise à jour
 
@@ -174,7 +175,7 @@ git push
 - **Le dépôt est public.** Tout ce qui est saisi (noms, prénoms, numéros de téléphone des organisateurs, messages) est lisible par n'importe qui qui connaît ou trouve l'adresse du dépôt, y compris dans l'historique GitHub. Ne saisissez rien de sensible.
 - **Le jeton donne un accès en écriture** au dépôt. Il est stocké en clair dans le navigateur de la personne qui l'a saisi. Utilisez toujours un jeton *fine-grained* limité à ce seul dépôt et à la permission *Contents : Read and write*, avec une date d'expiration.
 - **Le lien d'inscription généré par l'organisateur (et celui inséré dans l'e-mail) contient le jeton.** Quiconque reçoit ce lien peut écrire dans `randos.json`. C'est ce qui permet aux participants de s'inscrire sans compte GitHub. À réserver à un groupe de confiance. Si le jeton fuit, le **révoquer** sur GitHub (Settings → Developer settings) et en créer un nouveau, puis régénérer les liens.
-- **Il n'y a pas d'authentification réelle** : le bouton « Gérer la randonnée » et les confirmations évitent les erreurs, mais ne bloquent pas quelqu'un qui détient le jeton.
+- **Il n'y a pas d'authentification réelle** : le bouton « Gérer la randonnée » et les confirmations évitent les erreurs, mais ne bloquent pas quelqu'un qui détient le jeton. Cela vaut aussi pour la modification et la suppression des messages de la discussion, ouvertes à tous.
 - **Faites des sauvegardes** : **⚙ → Données → Exporter en JSON** de temps en temps.
 
 ---
@@ -201,3 +202,39 @@ git push
 | La carte reste grise ou vide | Connexion internet ou bloqueur de contenu qui bloque Leaflet ou les tuiles. Essayer un autre fond de carte via le sélecteur en haut à droite de la carte. |
 | Le site n'affiche pas la nouvelle version | Cache du navigateur : rechargement forcé (`Ctrl+Shift+R`), puis vérifier le numéro de version en bas de page. |
 | Page blanche ou erreur 404 sur le site | GitHub Pages non activé, ou fichier pas nommé exactement `index.html`. Vérifier **Settings → Pages**. |
+
+---
+
+## 8. Intégrer l'application dans un autre site (iframe)
+
+L'application peut être affichée dans une page d'un autre site avec une balise `<iframe>`. Pour que **la hauteur s'adapte au contenu** (aucun ascenseur dans le cadre) et que les fenêtres (inscription, formulaire…) s'ouvrent à l'endroit visible de l'écran, ajoutez ce code dans la page qui accueille l'application (remplacer l'adresse par celle de votre site) :
+
+```html
+<iframe id="sentiers" src="https://<votre-compte>.github.io/<nom-du-depot>/index.html"
+        style="width:100%;height:800px;border:0;" scrolling="no" allow="fullscreen"></iframe>
+
+<script>
+(function(){
+  const f = document.getElementById('sentiers');
+  function sendView(){
+    if(!f.contentWindow) return;
+    const r = f.getBoundingClientRect();
+    f.contentWindow.postMessage({type: 'sentiers-view', top: Math.max(0, -r.top), height: window.innerHeight}, '*');
+  }
+  window.addEventListener('message', function(e){
+    if(e.source !== f.contentWindow || !e.data || e.data.type !== 'sentiers-height') return;
+    f.style.height = e.data.height + 'px';
+    sendView();
+  });
+  window.addEventListener('scroll', sendView, {passive: true});
+  window.addEventListener('resize', sendView);
+})();
+</script>
+```
+
+Fonctionnement :
+
+- L'application envoie sa hauteur à la page parente, qui redimensionne le cadre. Ça marche que les deux sites soient sur le même domaine ou non.
+- La page parente indique à l'application quelle partie du cadre est visible : les fenêtres s'ouvrent ainsi dans la zone affichée, et pas en haut d'un cadre très long. La carte en plein écran s'adapte de la même façon.
+- `allow="fullscreen"` permet au bouton plein écran des cartes d'utiliser le vrai plein écran du navigateur.
+- Tant que le script n'est pas présent dans la page parente, l'application se comporte normalement (avec ses propres ascenseurs si le cadre est trop petit).
